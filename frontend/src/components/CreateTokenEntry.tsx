@@ -1,28 +1,81 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
-import TokenFactoryAbi from "../abis/TokenFactory.json";
+import { useAccount, useReadContract, useWatchContractEvent, useWriteContract, useSimulateContract } from "wagmi";
+import TokenFactoryAbi from "../abi/TokenFactory.json";
 import { contract_address } from "../pages/constants";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { boolean, is } from "@metamask/superstruct";
 // 新增 ERC20 代币生成入口组件，支持手动输入名称和数量
 const CreateTokenEntry: React.FC = () => {
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
-  const [tokenAmount, setTokenAmount] = useState("");
+  const [tokenAmount, setTokenAmount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false); // 新增加载状态
+  // 1. 使用 useAccount 获取连接状态
+  const { address, isConnected, isDisconnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
 
   const { writeContract } = useWriteContract();
+  //监听事件
+  useWatchContractEvent({
+    address: contract_address.TOKEN_FACTORY as `0x${string}`,
+    abi: TokenFactoryAbi,
+    eventName: "TokenCreated",
+    onLogs(logs) {
+      console.log("监听到 TokenCreated 事件，代币创建成功！", logs);
+    },
+  });
+
+  //模拟调用  用来判断是否能调用成功   如果不能执行成功提前帮用户避免Gas损失！！
+  const { data: simulateData, error: simulateError } = useSimulateContract({
+    address: contract_address.TOKEN_FACTORY as `0x${string}`,
+    abi: TokenFactoryAbi,
+    functionName: "createToken",
+    args: [tokenName, tokenSymbol, tokenAmount],
+    query: {
+      enabled: !!tokenName && !!tokenSymbol && !!tokenAmount && !!address,
+    },
+  });
+
+  useEffect(() => {
+    console.log("simulateError:", simulateError);
+    console.log("simulateData:", simulateData);
+  }, [simulateError, simulateData]);
+
   const generateToken = async () => {
+    //先检查钱包链接情况
+    if (isDisconnected) {
+      alert("请先连接钱包！");
+      return;
+    }
     if (!tokenName || !tokenSymbol || !tokenAmount) {
       alert("请完整填写代币信息");
       return;
     }
+    setIsLoading(true); // 开始加载
 
-    await writeContract({
-      address: contract_address.TOKEN_FACTORY,
+    console.log("simulateData:", simulateData);
+    console.log("simulateError:", simulateError);
+    if (!simulateData) {
+      setIsLoading(false); // 结束加载
+      alert("代币生成失败，请检查输入信息");
+      return;
+    }
+    await writeContractMethod();
+  };
+
+  //写入合约
+  const writeContractMethod = async () => {
+    const tx = await writeContract({
+      address: contract_address.TOKEN_FACTORY as `0x${string}`,
       abi: TokenFactoryAbi,
       functionName: "createToken",
       args: [tokenName, tokenSymbol, tokenAmount],
     });
-    alert("Token 创建并铸币成功！");
+    setIsLoading(false); // 结束加载
+    console.log("Transaction:", tx);
+    console.log("Token created and minted");
+    console.log("Token 创建并铸币成功！");
   };
   return (
     <div
@@ -57,9 +110,15 @@ const CreateTokenEntry: React.FC = () => {
           style={{ width: "100%", padding: 8, marginBottom: 8 }}
         />
       </div>
-      <button style={{ width: "100%" }} onClick={generateToken}>
-        生成 ERC20 代币
-      </button>
+      {address && isConnected ? (
+        <button style={{ width: "100%" }} onClick={generateToken}>
+          {isLoading ? "加载中..." : "生成 ERC20 代币"}
+        </button>
+      ) : (
+        <button style={{ width: "100%", marginTop: 8 }} onClick={openConnectModal}>
+          连接钱包
+        </button>
+      )}
     </div>
   );
 };
