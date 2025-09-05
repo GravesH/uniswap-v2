@@ -1,11 +1,29 @@
 import React, { useState } from "react";
-
+import { ethers } from "ethers";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import TokenFactoryAbi from "../abis/TokenFactory.json";
+import { contract_address } from "../pages/constants";
 // 新增 ERC20 代币生成入口组件，支持手动输入名称和数量
 const CreateTokenEntry: React.FC = () => {
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenAmount, setTokenAmount] = useState("");
 
+  const { writeContract } = useWriteContract();
+  const generateToken = async () => {
+    if (!tokenName || !tokenSymbol || !tokenAmount) {
+      alert("请完整填写代币信息");
+      return;
+    }
+
+    await writeContract({
+      address: contract_address.TOKEN_FACTORY,
+      abi: TokenFactoryAbi,
+      functionName: "createToken",
+      args: [tokenName, tokenSymbol, tokenAmount],
+    });
+    alert("Token 创建并铸币成功！");
+  };
   return (
     <div
       style={{
@@ -39,7 +57,9 @@ const CreateTokenEntry: React.FC = () => {
           style={{ width: "100%", padding: 8, marginBottom: 8 }}
         />
       </div>
-      <button style={{ width: "100%" }}>生成 ERC20 代币</button>
+      <button style={{ width: "100%" }} onClick={generateToken}>
+        生成 ERC20 代币
+      </button>
     </div>
   );
 };
