@@ -14,11 +14,17 @@ contract MyToken is ERC20 {
 
 contract TokenFactory{
     address[] public tokens;
+    struct tokenInfo{
+        string name;
+        string symbol;
+    }
+    mapping(address => tokenInfo ) public tokenInfos;
     function createToken(string memory name, string memory symbol) external {
         MyToken token = new MyToken(name, symbol);
+     tokenInfos[address(token)] = tokenInfo(name, symbol);
         tokens.push(address(token));
     }
-    function getTokens() external view returns(address[] memory){
+      function getAllTokens() external view returns (address[] memory) {
         return tokens;
     }
 }
