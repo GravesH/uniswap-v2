@@ -1,4 +1,3 @@
-
 const { ethers } = require("hardhat");
 const fs = require("fs");
 async function main() {
@@ -8,7 +7,10 @@ async function main() {
     await deployer.getAddress()
   );
   //部署WETH9合约
-  console.log("Account balance:", (await deployer.provider.getBalance(deployer.address)).toString());
+  console.log(
+    "Account balance:",
+    (await deployer.provider.getBalance(deployer.address)).toString()
+  );
   const WETH9 = await ethers.getContractFactory("WETH9");
   const weth9 = await WETH9.deploy();
   await weth9.waitForDeployment();
@@ -33,6 +35,10 @@ async function main() {
 
   console.log("UniswapV2Router02 address:", uniswapV2Router02.target);
 
+  //部署MyToken合约
+  const TokenFactory = await ethers.getContractFactory("TokenFactory");
+  const factory = await TokenFactory.deploy();
+  await factory.waitForDeployment();
   //保存地址到文件  方便前端使用
   fs.writeFileSync(
     "waitForDeployment-addresses.json",
@@ -41,6 +47,7 @@ async function main() {
         UNISWAP_V2_FACTORY: uniswapV2Factory.target,
         WETH: weth9.target,
         UNISWAP_V2_ROUTER_02: uniswapV2Router02.target,
+        TOKEN_FACTORY: factory.target,
       },
       null,
       2
