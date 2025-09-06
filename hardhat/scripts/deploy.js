@@ -39,6 +39,7 @@ async function main() {
   const TokenFactory = await ethers.getContractFactory("TokenFactory");
   const factory = await TokenFactory.deploy();
   await factory.waitForDeployment();
+  console.log("TokenFactory address:", factory.target);
   //保存地址到文件  方便前端使用
   fs.writeFileSync(
     "waitForDeployment-addresses.json",

@@ -22,6 +22,9 @@ const CreateTokenEntry: React.FC = () => {
     abi: TokenFactoryAbi,
     eventName: "TokenCreated",
     onLogs(logs) {
+      setIsLoading(false); // 结束加载
+      console.log("Token created and minted");
+      console.log("Token 创建并铸币成功！");
       console.log("监听到 TokenCreated 事件，代币创建成功！", logs);
     },
   });
@@ -72,10 +75,6 @@ const CreateTokenEntry: React.FC = () => {
       functionName: "createToken",
       args: [tokenName, tokenSymbol, tokenAmount],
     });
-    setIsLoading(false); // 结束加载
-    console.log("Transaction:", tx);
-    console.log("Token created and minted");
-    console.log("Token 创建并铸币成功！");
   };
   return (
     <div
@@ -106,7 +105,7 @@ const CreateTokenEntry: React.FC = () => {
           type="number"
           placeholder="初始发行数量"
           value={tokenAmount}
-          onChange={(e) => setTokenAmount(e.target.value)}
+          onChange={(e) => setTokenAmount(Number(e.target.value))}
           style={{ width: "100%", padding: 8, marginBottom: 8 }}
         />
       </div>
