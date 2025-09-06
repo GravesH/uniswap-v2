@@ -35,6 +35,11 @@ async function main() {
 
   console.log("UniswapV2Router02 address:", uniswapV2Router02.target);
 
+  //部署UniswapV2Pair合约
+  const UniswapV2Pair = await ethers.getContractFactory("UniswapV2Pair");
+  const uniswapV2Pair = await UniswapV2Pair.deploy();
+  await uniswapV2Pair.waitForDeployment();
+  console.log("UniswapV2Pair address:", uniswapV2Pair.target);
   //部署MyToken合约
   const TokenFactory = await ethers.getContractFactory("TokenFactory");
   const factory = await TokenFactory.deploy();
@@ -48,6 +53,7 @@ async function main() {
         UNISWAP_V2_FACTORY: uniswapV2Factory.target,
         WETH: weth9.target,
         UNISWAP_V2_ROUTER_02: uniswapV2Router02.target,
+        UNISWAP_V2_PAIR: uniswapV2Pair.target,
         TOKEN_FACTORY: factory.target,
       },
       null,

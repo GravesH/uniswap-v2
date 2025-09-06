@@ -1,49 +1,34 @@
-import React, { useState } from "react";
-
+import React, { useState, useEffect } from "react";
+import { useAccount, useReadContract, useWatchContractEvent, useWriteContract, useSimulateContract } from "wagmi";
+import UniswapV2Router02 from "../abi/UniswapV2Router02.json";
+import UniswapV2Pair from "../abi/UniswapV2Pair.json";
+import { contract_address } from "../pages/constants";
 // 模拟的代币类型
 interface Token {
   address: string;
   name: string;
   symbol: string;
-  balance: string;
   decimals: number;
 }
 
-// 模拟的代币列表
+// 模拟的代币列表 - 这里只包含代币的基本信息，不包含用户余额
 const mockTokens: Token[] = [
   {
-    address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-    name: "Uniswap",
-    symbol: "UNI",
-    balance: "100.0",
+    address: "0x883D049624E84eEE66Cbc1a198F961d22b344DDC",
+    name: "token1",
+    symbol: "token1",
     decimals: 18,
   },
   {
-    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-    name: "Dai Stablecoin",
-    symbol: "DAI",
-    balance: "500.0",
+    address: "0xDFe68F52f379d7Ce0a6eFc5d5a58aCE506a40888",
+    name: "token3",
+    symbol: "token3",
     decimals: 18,
   },
   {
-    address: "0xYourMintedTokenAddress1",
-    name: "My Token 1",
-    symbol: "MTK1",
-    balance: "1000.0",
-    decimals: 18,
-  },
-  {
-    address: "0xYourMintedTokenAddress2",
-    name: "My Token 2",
-    symbol: "MTK2",
-    balance: "2000.0",
-    decimals: 18,
-  },
-  {
-    address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    name: "Wrapped Ether",
-    symbol: "WETH",
-    balance: "5.0",
+    address: "0x6176Ab4B2A9b3e0Ac828d95B0fB904fd711F7C0d",
+    name: "token4",
+    symbol: "token4",
     decimals: 18,
   },
 ];
@@ -56,39 +41,36 @@ const LiquidityPool: React.FC = () => {
   const [lpAmount, setLpAmount] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [priceRatio, setPriceRatio] = useState<number | null>(null);
 
-  // 模拟获取代币价格比例（实际应该从合约或预言机获取）
-  const getTokenRatio = (tokenA: Token, tokenB: Token): number => {
-    // 这里只是示例，实际应该查询链上价格
-    const mockPrices: Record<string, number> = {
-      UNI: 5.0,
-      DAI: 1.0,
-      MTK1: 0.5,
-      MTK2: 2.0,
-      WETH: 2000.0,
-    };
-    return mockPrices[tokenA.symbol] / mockPrices[tokenB.symbol];
-  };
+  const { address, isConnected, isDisconnected } = useAccount();
+  // 当数量变化时，重新计算价格比例
+  useEffect(() => {
+    if (tokenA && tokenB && amountA && amountB) {
+      const numA = parseFloat(amountA);
+      const numB = parseFloat(amountB);
 
-  // 当tokenA或tokenB变化时，自动计算另一个代币的数量
-  const calculateAmounts = (baseToken: "A" | "B", amount: string) => {
-    if (!tokenA || !tokenB || !amount) {
-      setAmountA("");
-      setAmountB("");
-      return;
-    }
-
-    const ratio = getTokenRatio(tokenA, tokenB);
-
-    if (baseToken === "A") {
-      setAmountA(amount);
-      setAmountB((parseFloat(amount) * ratio).toFixed(6));
+      if (numA > 0 && numB > 0) {
+        setPriceRatio(numA / numB);
+      } else {
+        setPriceRatio(null);
+      }
     } else {
-      setAmountB(amount);
-      setAmountA((parseFloat(amount) / ratio).toFixed(6));
+      setPriceRatio(null);
     }
-  };
+  }, [amountA, amountB, tokenA, tokenB]);
 
+  // 当tokenA或tokenB变化时，重置数量
+  useEffect(() => {
+    setAmountA("");
+    setAmountB("");
+    setPriceRatio(null);
+  }, [tokenA, tokenB]);
+
+  //通过ethers检查用户余额
+  const checkoutAllowanceByEther = () => {};
+  //通过wagmi检查用户余额
+  const checkoutAllowanceByWagmi = () => {};
   // 添加流动性处理函数
   const handleAddLiquidity = async () => {
     if (!tokenA || !tokenB || !amountA || !amountB) {
@@ -96,30 +78,35 @@ const LiquidityPool: React.FC = () => {
       return;
     }
 
+    if (parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) {
+      alert("输入数量必须大于0");
+      return;
+    }
+
+    if (isDisconnected) {
+      alert("请先连接钱包！");
+      return;
+    }
     setIsAdding(true);
     try {
-      console.log(`添加流动性: ${amountA} ${tokenA.symbol} 和 ${amountB} ${tokenB.symbol}`);
+      console.log(`创建流动性池: ${amountA} ${tokenA.symbol} 和 ${amountB} ${tokenB.symbol}`);
       console.log("代币A地址:", tokenA.address);
       console.log("代币B地址:", tokenB.address);
+      console.log("初始价格比例:", priceRatio);
 
-      // 模拟合约调用 - 实际应该调用addLiquidity函数
-      // await routerContract.addLiquidity(
-      //   tokenA.address,
-      //   tokenB.address,
-      //   amountA,
-      //   amountB,
-      //   0, // amountAMin
-      //   0, // amountBMin
-      //   userAddress,
-      //   deadline
-      // );
+      // 在真实项目中，这里会：
+      // 1. 检查用户是否已连接钱包
+      // 2. 检查用户是否有足够的代币余额
+      // 3. 请求用户授权代币转账
+      // 4. 调用路由合约的 addLiquidity 函数
 
-      alert(`成功添加 ${amountA} ${tokenA.symbol} 和 ${amountB} ${tokenB.symbol} 流动性`);
+      alert(`成功创建 ${tokenA.symbol}/${tokenB.symbol} 流动性池`);
       setAmountA("");
       setAmountB("");
+      setPriceRatio(null);
     } catch (error) {
-      console.error("添加流动性失败:", error);
-      alert("添加流动性失败");
+      console.error("创建流动性池失败:", error);
+      alert("创建流动性池失败");
     } finally {
       setIsAdding(false);
     }
@@ -137,16 +124,10 @@ const LiquidityPool: React.FC = () => {
       console.log(`移除 ${lpAmount} LP代币`);
       console.log("交易对:", `${tokenA.symbol}/${tokenB.symbol}`);
 
-      // 模拟合约调用 - 实际应该调用removeLiquidity函数
-      // await routerContract.removeLiquidity(
-      //   tokenA.address,
-      //   tokenB.address,
-      //   lpAmount,
-      //   0, // amountAMin
-      //   0, // amountBMin
-      //   userAddress,
-      //   deadline
-      // );
+      // 在真实项目中，这里会：
+      // 1. 检查用户是否持有足够的LP代币
+      // 2. 授权LP代币销毁
+      // 3. 调用路由合约的 removeLiquidity 函数
 
       alert(`成功移除 ${lpAmount} LP代币`);
       setLpAmount("");
@@ -169,7 +150,11 @@ const LiquidityPool: React.FC = () => {
         backgroundColor: "#fafafa",
       }}
     >
-      <h3 style={{ marginBottom: 20, textAlign: "center" }}>Uniswap V2 资金池操作</h3>
+      <h3 style={{ marginBottom: 20, textAlign: "center" }}>创建流动性池</h3>
+
+      <div style={{ marginBottom: 16, padding: 12, backgroundColor: "#fff3cd", borderRadius: 6 }}>
+        <strong>提示：</strong>请确保你拥有足够的两类代币来创建流动性池
+      </div>
 
       {/* 交易对选择 */}
       <div style={{ marginBottom: 20 }}>
@@ -182,9 +167,6 @@ const LiquidityPool: React.FC = () => {
               onChange={(e) => {
                 const token = mockTokens.find((t) => t.address === e.target.value);
                 setTokenA(token || null);
-                if (token && tokenB) {
-                  calculateAmounts("A", amountA);
-                }
               }}
               style={{
                 width: "100%",
@@ -210,9 +192,6 @@ const LiquidityPool: React.FC = () => {
               onChange={(e) => {
                 const token = mockTokens.find((t) => t.address === e.target.value);
                 setTokenB(token || null);
-                if (token && tokenA) {
-                  calculateAmounts("B", amountB);
-                }
               }}
               style={{
                 width: "100%",
@@ -233,8 +212,8 @@ const LiquidityPool: React.FC = () => {
           </div>
         </div>
 
-        {/* 交易对信息 */}
-        {tokenA && tokenB && (
+        {/* 交易对信息和价格比例 */}
+        {tokenA && tokenB && priceRatio && (
           <div
             style={{
               padding: 12,
@@ -242,18 +221,21 @@ const LiquidityPool: React.FC = () => {
               borderRadius: 6,
               border: "1px solid #4CAF50",
               fontSize: 14,
+              marginBottom: 16,
             }}
           >
             <strong>交易对:</strong> {tokenA.symbol}/{tokenB.symbol}
             <br />
-            <strong>预估比例:</strong> 1 {tokenA.symbol} = {getTokenRatio(tokenA, tokenB).toFixed(6)} {tokenB.symbol}
+            <strong>初始价格设定:</strong>
+            <br />1 {tokenA.symbol} = {priceRatio.toFixed(6)} {tokenB.symbol}
+            <br />1 {tokenB.symbol} = {(1 / priceRatio).toFixed(6)} {tokenA.symbol}
           </div>
         )}
       </div>
 
       {/* 添加流动性部分 */}
       <div style={{ marginBottom: 20 }}>
-        <h4 style={{ marginBottom: 12 }}>添加流动性</h4>
+        <h4 style={{ marginBottom: 12 }}>注入初始流动性</h4>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
           <div>
@@ -262,7 +244,9 @@ const LiquidityPool: React.FC = () => {
               type="number"
               placeholder="0.0"
               value={amountA}
-              onChange={(e) => calculateAmounts("A", e.target.value)}
+              onChange={(e) => setAmountA(e.target.value)}
+              min="0"
+              step="any"
               style={{
                 width: "100%",
                 padding: 10,
@@ -271,13 +255,16 @@ const LiquidityPool: React.FC = () => {
               }}
             />
           </div>
+
           <div>
             <label style={{ display: "block", marginBottom: 8 }}>{tokenB?.symbol || "代币B"} 数量:</label>
             <input
               type="number"
               placeholder="0.0"
               value={amountB}
-              onChange={(e) => calculateAmounts("B", e.target.value)}
+              onChange={(e) => setAmountB(e.target.value)}
+              min="0"
+              step="any"
               style={{
                 width: "100%",
                 padding: 10,
@@ -301,11 +288,11 @@ const LiquidityPool: React.FC = () => {
             cursor: isAdding ? "not-allowed" : "pointer",
           }}
         >
-          {isAdding ? "添加中..." : "添加流动性"}
+          {isAdding ? "创建中..." : "创建流动性池"}
         </button>
       </div>
 
-      {/* 移除流动性部分 */}
+      {/* 移除流动性部分 - 通常需要用户连接钱包后才能看到 */}
       <div>
         <h4 style={{ marginBottom: 12 }}>移除流动性</h4>
 
@@ -316,6 +303,8 @@ const LiquidityPool: React.FC = () => {
             placeholder="0.0"
             value={lpAmount}
             onChange={(e) => setLpAmount(e.target.value)}
+            min="0"
+            step="any"
             style={{
               width: "100%",
               padding: 10,
@@ -341,26 +330,6 @@ const LiquidityPool: React.FC = () => {
           {isRemoving ? "移除中..." : "移除流动性"}
         </button>
       </div>
-
-      {/* 余额信息显示 */}
-      {(tokenA || tokenB) && (
-        <div
-          style={{
-            marginTop: 20,
-            padding: 12,
-            backgroundColor: "#e3f2fd",
-            borderRadius: 6,
-            border: "1px solid #2196F3",
-            fontSize: 14,
-          }}
-        >
-          <strong>余额信息:</strong>
-          <br />
-          {tokenA && `${tokenA.symbol}: ${tokenA.balance}`}
-          {tokenA && tokenB && " | "}
-          {tokenB && `${tokenB.symbol}: ${tokenB.balance}`}
-        </div>
-      )}
     </div>
   );
 };
