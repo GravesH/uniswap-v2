@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { useAccount, useReadContract, useWatchContractEvent, useWriteContract, useSimulateContract } from "wagmi";
+import { useAccount, useReadContract, useWatchContractEvent, useWriteContract, useSimulateContract, usePublicClient } from "wagmi";
 import TokenFactoryAbi from "../abi/TokenFactory.json";
 import { contract_address } from "../pages/constants";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { waitForTransactionReceipt } from "viem/actions";
+
 import { boolean, is } from "@metamask/superstruct";
 // 新增 ERC20 代币生成入口组件，支持手动输入名称和数量
 const CreateTokenEntry: React.FC = () => {
@@ -13,9 +15,10 @@ const CreateTokenEntry: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false); // 新增加载状态
   // 1. 使用 useAccount 获取连接状态
   const { address, isConnected, isDisconnected } = useAccount();
+  const publicClient = usePublicClient();
   const { openConnectModal } = useConnectModal();
 
-  const { writeContract } = useWriteContract();
+  const { writeContract, writeContractAsync } = useWriteContract();
   //监听事件
   useWatchContractEvent({
     address: contract_address.TOKEN_FACTORY as `0x${string}`,
@@ -28,7 +31,30 @@ const CreateTokenEntry: React.FC = () => {
       console.log("监听到 TokenCreated 事件，代币创建成功！", logs);
     },
   });
+  const {
+    data: totalTokens,
+    isError,
+    error,
+  } = useReadContract({
+    address: contract_address.TOKEN_FACTORY as `0x${string}`,
+    abi: TokenFactoryAbi,
+    functionName: "getAllTokens",
+    query: {
+      enabled: !!address,
+      retry: 3,
+    },
+  });
 
+  // 添加详细的日志
+  useEffect(() => {
+    console.log("useReadContract状态:", {
+      totalTokens,
+      isError,
+      error,
+      address,
+      contractAddress: contract_address.TOKEN_FACTORY,
+    });
+  }, [totalTokens, isError, error, address]);
   //模拟调用  用来判断是否能调用成功   如果不能执行成功提前帮用户避免Gas损失！！
   const { data: simulateData, error: simulateError } = useSimulateContract({
     address: contract_address.TOKEN_FACTORY as `0x${string}`,
@@ -69,12 +95,19 @@ const CreateTokenEntry: React.FC = () => {
 
   //写入合约
   const writeContractMethod = async () => {
-    const tx = await writeContract({
+    const tx = await writeContractAsync({
       address: contract_address.TOKEN_FACTORY as `0x${string}`,
       abi: TokenFactoryAbi,
       functionName: "createToken",
       args: [tokenName, tokenSymbol, tokenAmount],
     });
+    const receipt = await waitForTransactionReceipt(publicClient, { hash: tx });
+    console.log("receiptA:", receipt);
+    if (receipt?.status !== "success") {
+      console.error("A 授权失败");
+      return;
+    }
+    console.log("A 授权成功");
   };
   return (
     <div

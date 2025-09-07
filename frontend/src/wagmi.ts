@@ -1,6 +1,6 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { arbitrum, base, mainnet, optimism, polygon, sepolia } from "wagmi/chains";
-import { http } from "wagmi";
+import { http, webSocket } from "wagmi";
 import { localhost } from "./chain"; //本地部署的区块链网络配置
 //核心作用就是告诉你的前端应用应该去连接哪些区块链网络、
 // 如何使用这些网络，以及如何与用户的钱包进行安全交互！！！！
@@ -17,7 +17,7 @@ export const config = getDefaultConfig({
     [base.id]: http(`https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`),
     // 🚀 重点：强制指定 Sepolia 的 Infura 节点
     [sepolia.id]: http(`https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY1}`),
-    [localhost.id]: http("http://127.0.0.1:8545"), // 本地区块链节点！！
+    [localhost.id]: webSocket("ws://127.0.0.1:8545"), // 本地区块链节点！！
   },
   ssr: true,
 });
