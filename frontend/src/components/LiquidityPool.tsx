@@ -159,7 +159,7 @@ const LiquidityPool: React.FC = () => {
   });
 
   useEffect(() => {
-    console.error("Simulation error:", simulateError);
+    console.log("Simulation error:", simulateError);
     console.log("Simulation data:", simulateData);
   }, [simulateError, simulateData]);
   useEffect(() => {

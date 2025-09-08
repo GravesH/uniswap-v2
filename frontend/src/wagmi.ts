@@ -16,7 +16,7 @@ export const config = getDefaultConfig({
     [arbitrum.id]: http(`https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`),
     [base.id]: http(`https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`),
     // 🚀 重点：强制指定 Sepolia 的 Infura 节点
-    [sepolia.id]: http(`https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY1}`),
+    [sepolia.id]: http(`https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY2}`),
     [localhost.id]: webSocket("ws://127.0.0.1:8545"), // 本地区块链节点！！
   },
   ssr: true,

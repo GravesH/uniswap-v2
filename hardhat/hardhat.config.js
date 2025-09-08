@@ -40,7 +40,7 @@ module.exports = {
     sepolia: {
       //指定 Hardhat 连接到哪个 以太坊节点（RPC endpoint）
       //也就是 Hardhat 部署合约、调用链上方法时要“发送交易”的目标节点
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`, // Replace with your Infura project ID
+      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY1}`, // Replace with your Infura project ID
       //指定 Hardhat 使用哪个账户来部署合约、发送交易 钱包的私钥!!!!
       accounts: [
         process.env.MNEMONIC, // Replace with your wallet's mnemonic or private key
