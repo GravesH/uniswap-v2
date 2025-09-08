@@ -27,21 +27,27 @@ interface Token {
 
 const mockTokens: Token[] = [
   {
-    address: "0x883D049624E84eEE66Cbc1a198F961d22b344DDC",
-    name: "token1",
-    symbol: "token1",
+    address: "0xBA12646CC07ADBe43F8bD25D83FB628D29C8A762",
+    name: "token8",
+    symbol: "token8",
     decimals: 18,
   },
   {
-    address: "0xDFe68F52f379d7Ce0a6eFc5d5a58aCE506a40888",
-    name: "token3",
-    symbol: "token3",
+    address: "0x7ab4C4804197531f7ed6A6bc0f0781f706ff7953",
+    name: "token9",
+    symbol: "token9",
     decimals: 18,
   },
   {
-    address: "0x6176Ab4B2A9b3e0Ac828d95B0fB904fd711F7C0d",
+    address: "0x3B02fF1e626Ed7a8fd6eC5299e2C54e1421B626B",
     name: "token4",
     symbol: "token4",
+    decimals: 18,
+  },
+  {
+    address: "0xc8CB5439c767A63aca1c01862252B2F3495fDcFE",
+    name: "token10",
+    symbol: "token10",
     decimals: 18,
   },
 ];
@@ -57,7 +63,6 @@ const LiquidityPool: React.FC = () => {
   const [priceRatio, setPriceRatio] = useState<number | null>(null);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [provider1, setProvider1] = useState<ethers.JsonRpcProvider | null>(null);
-
   const { address, isConnected, isDisconnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const publicClient = usePublicClient();

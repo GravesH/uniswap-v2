@@ -17,7 +17,6 @@ const CreateTokenEntry: React.FC = () => {
   const { address, isConnected, isDisconnected } = useAccount();
   const publicClient = usePublicClient();
   const { openConnectModal } = useConnectModal();
-
   const { writeContract, writeContractAsync } = useWriteContract();
   //监听事件
   useWatchContractEvent({
