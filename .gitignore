@@ -2,4 +2,5 @@
 node_modules/
 */node_modules/
 frontend/rainbowkit/node_modules/
+frontend/src/constants/index.ts
 hardhat/waitForDeployment-addresses.json
