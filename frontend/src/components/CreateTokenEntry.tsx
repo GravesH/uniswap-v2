@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { useAccount, useReadContract, useWatchContractEvent, useWriteContract, useSimulateContract, usePublicClient } from "wagmi";
 import TokenFactoryAbi from "../abi/TokenFactory.json";
-import { contract_address } from "../pages/constants";
+import { contract_address } from "../constants/index";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { waitForTransactionReceipt } from "viem/actions";
 

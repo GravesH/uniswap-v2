@@ -12,7 +12,7 @@ import UniswapV2Router02 from "../abi/UniswapV2Router02.json";
 import ERC20Abi from "../abi/ERC20.json";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import UniswapV2Pair from "../abi/UniswapV2Pair.json";
-import { contract_address } from "../pages/constants";
+import { contract_address } from "../constants";
 import { ethers } from "ethers";
 import { waitForTransactionReceipt } from "viem/actions";
 
