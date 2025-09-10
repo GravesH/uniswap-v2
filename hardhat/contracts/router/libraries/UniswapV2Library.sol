@@ -23,7 +23,7 @@ library UniswapV2Library {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1)),
-                hex'6ea2252a145d03633feebbade3509ebd120dbe9d50dbf6bd343c366dc155dc67' // init code hash 该值其实是 UniswapV2Pair 合约的 creationCode 的哈希值
+                hex'deeb071548035c1dbac32b72b7894baa2588dd95c6b0bb60e358adc7fb20aa8e' // init code hash 该值其实是 UniswapV2Pair 合约的 creationCode 的哈希值
             ))));
         //另外，INIT_CODE_PAIR_HASH 的值是带有 0x 开头的。而以上硬编码的 init code hash 前面已经加了 hex 关键字，所以单引号里的哈希值就不再需要 0x 开头。
     }
