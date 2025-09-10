@@ -11,7 +11,8 @@ import {
 import UniswapV2Router02 from "../abi/UniswapV2Router02.json";
 import ERC20Abi from "../abi/ERC20.json";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import UniswapV2Pair from "../abi/UniswapV2Pair.json";
+import UniswapV2FactoryAbi from "../abi/UniswapV2Factory.json";
+import UniswapV2PairAbi from "../abi/UniswapV2Pair.json";
 import { contract_address } from "../constants";
 import { ethers } from "ethers";
 import { waitForTransactionReceipt } from "viem/actions";
@@ -27,27 +28,21 @@ interface Token {
 
 const mockTokens: Token[] = [
   {
-    address: "0xBA12646CC07ADBe43F8bD25D83FB628D29C8A762",
-    name: "token8",
-    symbol: "token8",
+    address: "0x32467b43BFa67273FC7dDda0999Ee9A12F2AaA08",
+    name: "t1",
+    symbol: "t1",
     decimals: 18,
   },
   {
-    address: "0x7ab4C4804197531f7ed6A6bc0f0781f706ff7953",
-    name: "token9",
-    symbol: "token9",
+    address: "0x4ABEaCA4b05d8fA4CED09D26aD28Ea298E8afaC8",
+    name: "t2",
+    symbol: "t2",
     decimals: 18,
   },
   {
-    address: "0x3B02fF1e626Ed7a8fd6eC5299e2C54e1421B626B",
-    name: "token4",
-    symbol: "token4",
-    decimals: 18,
-  },
-  {
-    address: "0xc8CB5439c767A63aca1c01862252B2F3495fDcFE",
-    name: "token10",
-    symbol: "token10",
+    address: "0x4AE5AF759E17599107c1C688bfaCF6131C376D51",
+    name: "t3",
+    symbol: "t3",
     decimals: 18,
   },
 ];
@@ -98,7 +93,7 @@ const LiquidityPool: React.FC = () => {
   const fetchBalance = async (token_address: string, decimals: number) => {
     const signer = await provider?.getSigner();
     const address = await signer?.getAddress();
-    const tokenContract = new ethers.Contract(token_address as `0x${string}`, UniswapV2Pair, provider!);
+    const tokenContract = new ethers.Contract(token_address as `0x${string}`, UniswapV2PairAbi, provider!);
     const balance = await tokenContract.balanceOf(address);
     return ethers.formatUnits(balance, decimals);
   };
@@ -134,7 +129,7 @@ const LiquidityPool: React.FC = () => {
 
   useWatchContractEvent({
     address: contract_address.UNISWAP_V2_PAIR as `0x${string}` | `0x${string}`[] | undefined,
-    abi: UniswapV2Pair,
+    abi: UniswapV2PairAbi,
     eventName: "Transfer",
     onLogs(logs) {
       console.log("监听到 Transfer 事件，流动性操作成功！", logs);
@@ -213,7 +208,57 @@ const LiquidityPool: React.FC = () => {
       console.log("B 授权成功");
     }
   };
+  // 只保留当前选中的交易对信息
+  const [currentPairInfo, setCurrentPairInfo] = useState<{
+    address: string | null;
+    reserves: { reserve0: string; reserve1: string } | null;
+    price: number | null;
+  }>({
+    address: null,
+    reserves: null,
+    price: null,
+  });
+  // 实时查询函数
+  const fetchCurrentPairInfo = async (tokenA: Token, tokenB: Token) => {
+    if (!provider1) return;
 
+    try {
+      // 1. 查询Pair地址
+      const factoryContract = new ethers.Contract(contract_address.UNISWAP_V2_FACTORY, UniswapV2FactoryAbi, provider1);
+
+      const pairAddress = await factoryContract.getPair(tokenA.address, tokenB.address);
+      if (pairAddress === ethers.ZeroAddress) {
+        setCurrentPairInfo({ address: null, reserves: null, price: null });
+        return;
+      }
+
+      // 2. 查询储备量和价格
+      const pairContract = new ethers.Contract(pairAddress, UniswapV2PairAbi, provider1);
+      const [reservesData, token0Address] = await Promise.all([pairContract.getReserves(), pairContract.token0()]);
+
+      const isTokenA0 = token0Address.toLowerCase() === tokenA.address.toLowerCase();
+      const reserve0 = ethers.formatUnits(reservesData[0], isTokenA0 ? tokenA.decimals : tokenB.decimals);
+      const reserve1 = ethers.formatUnits(reservesData[1], isTokenA0 ? tokenB.decimals : tokenA.decimals);
+      const price = Number(reserve1) / Number(reserve0);
+
+      setCurrentPairInfo({
+        address: pairAddress,
+        reserves: { reserve0, reserve1 },
+        price,
+      });
+    } catch (error) {
+      console.error("查询交易对信息失败:", error);
+      setCurrentPairInfo({ address: null, reserves: null, price: null });
+    }
+  };
+  // 当代币选择变化时实时查询
+  useEffect(() => {
+    if (tokenA && tokenB) {
+      fetchCurrentPairInfo(tokenA, tokenB);
+    } else {
+      setCurrentPairInfo({ address: null, reserves: null, price: null });
+    }
+  }, [tokenA, tokenB, provider1]);
   const handleAddLiquidity = async () => {
     if (!tokenA || !tokenB || !isValidNumber(amountA) || !isValidNumber(amountB)) {
       alert("请选择两种代币并输入有效数量");
@@ -253,9 +298,12 @@ const LiquidityPool: React.FC = () => {
 
       console.log("添加流动性交易已发送，等待确认...", tx);
       const receipt = await waitForTransactionReceipt(publicClient, { hash: tx });
-      if (receipt) {
+      if (receipt.status === "success") {
         console.log("交易已确认:", receipt);
         console.log("流动性池创建成功");
+        if (tokenA && tokenB) {
+          await fetchCurrentPairInfo(tokenA, tokenB);
+        }
         setAmountA("");
         setAmountB("");
         setPriceRatio(null);
@@ -304,7 +352,43 @@ const LiquidityPool: React.FC = () => {
       <div style={{ marginBottom: 16, padding: 12, backgroundColor: "#fff3cd", borderRadius: 6 }}>
         <strong>提示：</strong>请确保你拥有足够的两类代币来创建流动性池
       </div>
+      {tokenA && tokenB && (
+        <div style={{ marginTop: "20px", padding: "12px", backgroundColor: "#e7f3ff", borderRadius: "8px" }}>
+          <h4>
+            {tokenA.symbol}/{tokenB.symbol} 池子信息
+          </h4>
 
+          {currentPairInfo.address ? (
+            <>
+              <p>
+                <strong>池子地址:</strong>{" "}
+                {`${currentPairInfo.address.substring(0, 6)}...${currentPairInfo.address.substring(currentPairInfo.address.length - 4)}`}
+              </p>
+
+              {currentPairInfo.reserves && currentPairInfo.price && (
+                <>
+                  <p>
+                    <strong>储备量:</strong>
+                  </p>
+                  <ul>
+                    <li>
+                      {tokenA.symbol}: {currentPairInfo.reserves.reserve0}
+                    </li>
+                    <li>
+                      {tokenB.symbol}: {currentPairInfo.reserves.reserve1}
+                    </li>
+                  </ul>
+                  <p>
+                    <strong>当前价格:</strong> 1 {tokenA.symbol} = {currentPairInfo.price.toFixed(6)} {tokenB.symbol}
+                  </p>
+                </>
+              )}
+            </>
+          ) : (
+            <p>该交易对尚未创建流动性池</p>
+          )}
+        </div>
+      )}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
           <div>
