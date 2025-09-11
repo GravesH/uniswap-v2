@@ -13,7 +13,7 @@ import ERC20Abi from "../abi/ERC20.json";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import UniswapV2FactoryAbi from "../abi/UniswapV2Factory.json";
 import UniswapV2PairAbi from "../abi/UniswapV2Pair.json";
-import { contract_address } from "../constants";
+import { contract_address } from "../constants/index.ts";
 import { ethers } from "ethers";
 import { waitForTransactionReceipt } from "viem/actions";
 
@@ -28,19 +28,19 @@ interface Token {
 
 const mockTokens: Token[] = [
   {
-    address: "0x32467b43BFa67273FC7dDda0999Ee9A12F2AaA08",
+    address: "0x856e4424f806D16E8CBC702B3c0F2ede5468eae5",
     name: "t1",
     symbol: "t1",
     decimals: 18,
   },
   {
-    address: "0x4ABEaCA4b05d8fA4CED09D26aD28Ea298E8afaC8",
+    address: "0xb0279Db6a2F1E01fbC8483FCCef0Be2bC6299cC3",
     name: "t2",
     symbol: "t2",
     decimals: 18,
   },
   {
-    address: "0x4AE5AF759E17599107c1C688bfaCF6131C376D51",
+    address: "0x3dE2Da43d4c1B137E385F36b400507c1A24401f8",
     name: "t3",
     symbol: "t3",
     decimals: 18,
@@ -57,7 +57,9 @@ const LiquidityPool: React.FC = () => {
   const [isRemoving, setIsRemoving] = useState(false);
   const [priceRatio, setPriceRatio] = useState<number | null>(null);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  const [provider1, setProvider1] = useState<ethers.JsonRpcProvider | null>(null);
+  const [provider1, setProvider1] = useState<ethers.JsonRpcProvider | null>(
+    null
+  );
   const { address, isConnected, isDisconnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const publicClient = usePublicClient();
@@ -93,7 +95,11 @@ const LiquidityPool: React.FC = () => {
   const fetchBalance = async (token_address: string, decimals: number) => {
     const signer = await provider?.getSigner();
     const address = await signer?.getAddress();
-    const tokenContract = new ethers.Contract(token_address as `0x${string}`, UniswapV2PairAbi, provider!);
+    const tokenContract = new ethers.Contract(
+      token_address as `0x${string}`,
+      UniswapV2PairAbi,
+      provider!
+    );
     const balance = await tokenContract.balanceOf(address);
     return ethers.formatUnits(balance, decimals);
   };
@@ -103,7 +109,10 @@ const LiquidityPool: React.FC = () => {
 
     const balances = [];
     for (const token of [tokenA, tokenB]) {
-      const balance = await fetchBalance(token.address as `0x${string}`, token.decimals);
+      const balance = await fetchBalance(
+        token.address as `0x${string}`,
+        token.decimals
+      );
       balances.push(balance);
     }
 
@@ -117,18 +126,27 @@ const LiquidityPool: React.FC = () => {
     address: tokenA?.address as `0x${string}` | undefined,
     abi: ERC20Abi,
     functionName: "allowance",
-    args: [address as `0x${string}`, contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`],
+    args: [
+      address as `0x${string}`,
+      contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
+    ],
   });
 
   const { data: allowanceB } = useReadContract({
     address: tokenB?.address as `0x${string}` | undefined,
     abi: ERC20Abi,
     functionName: "allowance",
-    args: [address as `0x${string}`, contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`],
+    args: [
+      address as `0x${string}`,
+      contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
+    ],
   });
 
   useWatchContractEvent({
-    address: contract_address.UNISWAP_V2_PAIR as `0x${string}` | `0x${string}`[] | undefined,
+    address: contract_address.UNISWAP_V2_PAIR as
+      | `0x${string}`
+      | `0x${string}`[]
+      | undefined,
     abi: UniswapV2PairAbi,
     eventName: "Transfer",
     onLogs(logs) {
@@ -141,7 +159,11 @@ const LiquidityPool: React.FC = () => {
     abi: UniswapV2Router02,
     functionName: "addLiquidity",
     args:
-      tokenA && tokenB && isValidNumber(amountA) && isValidNumber(amountB) && address
+      tokenA &&
+      tokenB &&
+      isValidNumber(amountA) &&
+      isValidNumber(amountB) &&
+      address
         ? [
             tokenA.address,
             tokenB.address,
@@ -154,7 +176,12 @@ const LiquidityPool: React.FC = () => {
           ]
         : undefined,
     query: {
-      enabled: !!tokenA && !!tokenB && isValidNumber(amountA) && isValidNumber(amountB) && !!address,
+      enabled:
+        !!tokenA &&
+        !!tokenB &&
+        isValidNumber(amountA) &&
+        isValidNumber(amountB) &&
+        !!address,
     },
   });
 
@@ -167,8 +194,12 @@ const LiquidityPool: React.FC = () => {
     console.log("tokenB:", tokenB);
   }, [tokenA, tokenB]);
   const handleApprove = async () => {
-    const amountANums = isValidNumber(amountA) ? ethers.parseUnits(amountA, tokenA?.decimals || 18) : 0n;
-    const amountBNums = isValidNumber(amountB) ? ethers.parseUnits(amountB, tokenB?.decimals || 18) : 0n;
+    const amountANums = isValidNumber(amountA)
+      ? ethers.parseUnits(amountA, tokenA?.decimals || 18)
+      : 0n;
+    const amountBNums = isValidNumber(amountB)
+      ? ethers.parseUnits(amountB, tokenB?.decimals || 18)
+      : 0n;
 
     console.log("amountANums:", amountANums);
     console.log("amountBNums:", amountBNums);
@@ -180,9 +211,14 @@ const LiquidityPool: React.FC = () => {
         address: tokenA?.address as `0x${string}`,
         abi: ERC20Abi,
         functionName: "approve",
-        args: [contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`, amountANums],
+        args: [
+          contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
+          amountANums,
+        ],
       });
-      const receipt = await waitForTransactionReceipt(publicClient, { hash: tx });
+      const receipt = await waitForTransactionReceipt(publicClient, {
+        hash: tx,
+      });
       console.log("receiptA:", receipt);
       if (receipt?.status !== "success") {
         console.error("A 授权失败");
@@ -197,9 +233,14 @@ const LiquidityPool: React.FC = () => {
         address: tokenB?.address as `0x${string}`,
         abi: ERC20Abi,
         functionName: "approve",
-        args: [contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`, amountBNums],
+        args: [
+          contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
+          amountBNums,
+        ],
       });
-      const receipt = await waitForTransactionReceipt(publicClient, { hash: tx });
+      const receipt = await waitForTransactionReceipt(publicClient, {
+        hash: tx,
+      });
       console.log("receiptB:", receipt);
       if (receipt?.status !== "success") {
         console.error("B 授权失败");
@@ -218,27 +259,87 @@ const LiquidityPool: React.FC = () => {
     reserves: null,
     price: null,
   });
+  const [totalSupply, setTotalSupply] = useState<string>("0");
+  //查询LP Token余额
+  const fetchLPBalance = async (addr: string): Promise<string> => {
+    if (!addr || !address || !provider) return "0";
+
+    try {
+      const pairContract = new ethers.Contract(
+        addr as `0x${string}`,
+        UniswapV2PairAbi,
+        provider
+      );
+
+      //获取当前pair的 总份额
+      const totalSupply = await pairContract.totalSupply();
+      console.log("LP 总份额:", ethers.formatUnits(totalSupply, 18));
+      setTotalSupply(ethers.formatUnits(totalSupply, 18));
+      // 获取 LP 代币余额
+      const balance = await pairContract.balanceOf(address);
+      const decimals = await pairContract.decimals().catch(() => 18); // 默认18位小数
+      console.log("LP 余额:", ethers.formatUnits(balance, decimals));
+      setLpAmount(ethers.formatUnits(balance, decimals));
+      return ethers.formatUnits(balance, decimals);
+    } catch (error) {
+      console.error("获取 LP 余额失败:", error);
+      return "0";
+    }
+  };
+
+  //计算用户池子份额
+  const calculatePoolShare = (): string => {
+    if (!lpAmount || !totalSupply || totalSupply === "0") return "0";
+    const share = (parseFloat(lpAmount) / parseFloat(totalSupply)) * 100;
+    return share.toFixed(4);
+  };
   // 实时查询函数
   const fetchCurrentPairInfo = async (tokenA: Token, tokenB: Token) => {
-    if (!provider1) return;
+    console.log("fetchCurrentPairInfo:", tokenA, tokenB);
+    if (!provider) return;
 
     try {
       // 1. 查询Pair地址
-      const factoryContract = new ethers.Contract(contract_address.UNISWAP_V2_FACTORY, UniswapV2FactoryAbi, provider1);
+      const factoryContract = new ethers.Contract(
+        contract_address.UNISWAP_V2_FACTORY,
+        UniswapV2FactoryAbi,
+        provider
+      );
 
-      const pairAddress = await factoryContract.getPair(tokenA.address, tokenB.address);
+      const pairAddress = await factoryContract.getPair(
+        tokenA.address,
+        tokenB.address
+      );
+      //每一个交易对都是一个  pair合约实例  通过对应合约地址实例查询当前交易对信息
+      console.log("pairAddress:", pairAddress);
       if (pairAddress === ethers.ZeroAddress) {
         setCurrentPairInfo({ address: null, reserves: null, price: null });
         return;
       }
+      await fetchLPBalance(pairAddress);
 
       // 2. 查询储备量和价格
-      const pairContract = new ethers.Contract(pairAddress, UniswapV2PairAbi, provider1);
-      const [reservesData, token0Address] = await Promise.all([pairContract.getReserves(), pairContract.token0()]);
-
-      const isTokenA0 = token0Address.toLowerCase() === tokenA.address.toLowerCase();
-      const reserve0 = ethers.formatUnits(reservesData[0], isTokenA0 ? tokenA.decimals : tokenB.decimals);
-      const reserve1 = ethers.formatUnits(reservesData[1], isTokenA0 ? tokenB.decimals : tokenA.decimals);
+      const pairContract = new ethers.Contract(
+        pairAddress,
+        UniswapV2PairAbi,
+        provider
+      );
+      console.log("pairContract:", pairContract);
+      const [reservesData, token0Address] = await Promise.all([
+        pairContract.getReserves(),
+        pairContract.token0(),
+      ]);
+      console.log("reservesData:", reservesData, token0Address);
+      const isTokenA0 =
+        token0Address.toLowerCase() === tokenA.address.toLowerCase();
+      const reserve0 = ethers.formatUnits(
+        reservesData[0],
+        isTokenA0 ? tokenA.decimals : tokenB.decimals
+      );
+      const reserve1 = ethers.formatUnits(
+        reservesData[1],
+        isTokenA0 ? tokenB.decimals : tokenA.decimals
+      );
       const price = Number(reserve1) / Number(reserve0);
 
       setCurrentPairInfo({
@@ -258,9 +359,14 @@ const LiquidityPool: React.FC = () => {
     } else {
       setCurrentPairInfo({ address: null, reserves: null, price: null });
     }
-  }, [tokenA, tokenB, provider1]);
+  }, [tokenA, tokenB, provider]);
   const handleAddLiquidity = async () => {
-    if (!tokenA || !tokenB || !isValidNumber(amountA) || !isValidNumber(amountB)) {
+    if (
+      !tokenA ||
+      !tokenB ||
+      !isValidNumber(amountA) ||
+      !isValidNumber(amountB)
+    ) {
       alert("请选择两种代币并输入有效数量");
       return;
     }
@@ -280,48 +386,78 @@ const LiquidityPool: React.FC = () => {
       const amountAMin = (amountADesired * 99n) / 100n;
       const amountBMin = (amountBDesired * 99n) / 100n;
 
-      const tx = await writeContractAsync({
-        address: contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
-        abi: UniswapV2Router02,
-        functionName: "addLiquidity",
-        args: [
-          tokenA.address as `0x${string}`,
-          tokenB.address as `0x${string}`,
-          amountADesired,
-          amountBDesired,
-          amountAMin,
-          amountBMin,
-          address as `0x${string}`,
-          Math.floor(Date.now() / 1000) + 60 * 20,
-        ],
-      });
+      setTimeout(async () => {
+        const tx = await writeContractAsync({
+          address: contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
+          abi: UniswapV2Router02,
+          functionName: "addLiquidity",
+          args: [
+            tokenA.address as `0x${string}`,
+            tokenB.address as `0x${string}`,
+            amountADesired,
+            amountBDesired,
+            amountAMin,
+            amountBMin,
+            address as `0x${string}`,
+            Math.floor(Date.now() / 1000) + 60 * 20,
+          ],
+        });
 
-      console.log("添加流动性交易已发送，等待确认...", tx);
-      const receipt = await waitForTransactionReceipt(publicClient, { hash: tx });
-      if (receipt.status === "success") {
-        console.log("交易已确认:", receipt);
-        console.log("流动性池创建成功");
-        if (tokenA && tokenB) {
-          await fetchCurrentPairInfo(tokenA, tokenB);
+        console.log("添加流动性交易已发送，等待确认...", tx);
+        const receipt = await waitForTransactionReceipt(publicClient, {
+          hash: tx,
+        });
+        if (receipt.status === "success") {
+          console.log("交易已确认:", receipt);
+          console.log("流动性池创建成功");
+          // 添加延迟以确保区块链状态更新
+          setTimeout(async () => {
+            if (tokenA && tokenB) {
+              console.log("开始查询新创建的池子信息...");
+              await fetchCurrentPairInfo(tokenA, tokenB);
+            }
+          }, 3000); // 等待3秒让区块链状态更新
+          setAmountA("");
+          setAmountB("");
+          setPriceRatio(null);
         }
-        setAmountA("");
-        setAmountB("");
-        setPriceRatio(null);
-      }
+      }, 1000); // 模拟网络延迟
     } catch (error) {
       console.error("创建流动性池失败:", error);
+      if (error?.details) {
+        console.error("错误详情:", error.details);
+      }
+      if (error?.data) {
+        console.error("错误数据:", error.data);
+      }
       alert("创建流动性池失败");
     } finally {
       setIsAdding(false);
     }
   };
+  //根据代币A数量自动计算代币B数量
+  // 自动根据输入的一种代币计算另一种
+  const autoMatchRatio = (inputValue: string, inputType: "A" | "B") => {
+    if (!currentPairInfo.price || !tokenA || !tokenB) return;
 
+    const value = parseFloat(inputValue);
+    if (isNaN(value) || value <= 0) return;
+
+    if (inputType === "A") {
+      setAmountB((value * currentPairInfo.price).toFixed(6));
+    } else {
+      setAmountA((value / currentPairInfo.price).toFixed(6));
+    }
+  };
   const handleRemoveLiquidity = async () => {
     if (!tokenA || !tokenB || !isValidNumber(lpAmount)) {
       alert("请选择交易对并输入有效LP代币数量");
       return;
     }
-
+    if (isDisconnected) {
+      openConnectModal && openConnectModal();
+      return;
+    }
     setIsRemoving(true);
     try {
       console.log(`移除 ${lpAmount} LP代币`);
@@ -335,7 +471,41 @@ const LiquidityPool: React.FC = () => {
       setIsRemoving(false);
     }
   };
+  const validateLiquidityRatio = (
+    amountA: string,
+    amountB: string,
+    tokenA: Token | null,
+    tokenB: Token | null,
+    currentPrice: number | null
+  ): { isValid: boolean; message: string; suggestedAmountB?: string } => {
+    if (!tokenA || !tokenB || !amountA || !amountB || !currentPrice) {
+      return { isValid: false, message: "请先选择代币并输入数量" };
+    }
 
+    const numA = parseFloat(amountA);
+    const numB = parseFloat(amountB);
+
+    if (numA <= 0 || numB <= 0) {
+      return { isValid: false, message: "数量必须大于0" };
+    }
+
+    // 计算预期的B数量（基于当前价格）
+    const expectedB = numA * currentPrice;
+    const deviation = Math.abs((numB - expectedB) / expectedB);
+
+    // 允许0.1%的精度误差（考虑到浮点数计算）
+    if (deviation > 0.001) {
+      return {
+        isValid: false,
+        message: `比例不匹配！当前价格: 1 ${
+          tokenA.symbol
+        } = ${currentPrice.toFixed(6)} ${tokenB.symbol}`,
+        suggestedAmountB: expectedB.toFixed(6),
+      };
+    }
+
+    return { isValid: true, message: "比例正确" };
+  };
   return (
     <div
       style={{
@@ -349,20 +519,53 @@ const LiquidityPool: React.FC = () => {
     >
       <h3 style={{ marginBottom: 20, textAlign: "center" }}>创建流动性池</h3>
 
-      <div style={{ marginBottom: 16, padding: 12, backgroundColor: "#fff3cd", borderRadius: 6 }}>
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 12,
+          backgroundColor: "#fff3cd",
+          borderRadius: 6,
+        }}
+      >
         <strong>提示：</strong>请确保你拥有足够的两类代币来创建流动性池
       </div>
       {tokenA && tokenB && (
-        <div style={{ marginTop: "20px", padding: "12px", backgroundColor: "#e7f3ff", borderRadius: "8px" }}>
-          <h4>
-            {tokenA.symbol}/{tokenB.symbol} 池子信息
-          </h4>
+        <div
+          style={{
+            marginTop: "20px",
+            padding: "12px",
+            backgroundColor: "#e7f3ff",
+            borderRadius: "8px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h4>
+              {tokenA.symbol}/{tokenB.symbol} 池子信息
+            </h4>
+            <button
+              onClick={() => fetchCurrentPairInfo(tokenA, tokenB)}
+              style={{ padding: "4px 8px", fontSize: "12px" }}
+            >
+              刷新
+            </button>
+          </div>
 
           {currentPairInfo.address ? (
             <>
               <p>
                 <strong>池子地址:</strong>{" "}
-                {`${currentPairInfo.address.substring(0, 6)}...${currentPairInfo.address.substring(currentPairInfo.address.length - 4)}`}
+                {`${currentPairInfo.address.substring(
+                  0,
+                  6
+                )}...${currentPairInfo.address.substring(
+                  currentPairInfo.address.length - 4
+                )}`}
               </p>
 
               {currentPairInfo.reserves && currentPairInfo.price && (
@@ -379,8 +582,16 @@ const LiquidityPool: React.FC = () => {
                     </li>
                   </ul>
                   <p>
-                    <strong>当前价格:</strong> 1 {tokenA.symbol} = {currentPairInfo.price.toFixed(6)} {tokenB.symbol}
+                    <strong>当前价格:</strong> 1 {tokenA.symbol} ={" "}
+                    {currentPairInfo.price.toFixed(6)} {tokenB.symbol}
                   </p>
+                  {amountA && (
+                    <div style={{ marginTop: "4px", fontSize: "14px" }}>
+                      <strong>建议数量:</strong> {amountA} {tokenA.symbol} ≈{" "}
+                      {(parseFloat(amountA) * currentPairInfo.price).toFixed(6)}{" "}
+                      {tokenB.symbol}
+                    </div>
+                  )}
                 </>
               )}
             </>
@@ -390,13 +601,26 @@ const LiquidityPool: React.FC = () => {
         </div>
       )}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
           <div>
-            <label style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>代币A:</label>
+            <label
+              style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}
+            >
+              代币A:
+            </label>
             <select
               value={tokenA?.address || ""}
               onChange={(e) => {
-                const token = mockTokens.find((t) => t.address === e.target.value);
+                const token = mockTokens.find(
+                  (t) => t.address === e.target.value
+                );
                 setTokenA(token || null);
               }}
               style={{
@@ -416,11 +640,17 @@ const LiquidityPool: React.FC = () => {
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>代币B:</label>
+            <label
+              style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}
+            >
+              代币B:
+            </label>
             <select
               value={tokenB?.address || ""}
               onChange={(e) => {
-                const token = mockTokens.find((t) => t.address === e.target.value);
+                const token = mockTokens.find(
+                  (t) => t.address === e.target.value
+                );
                 setTokenB(token || null);
               }}
               style={{
@@ -457,7 +687,8 @@ const LiquidityPool: React.FC = () => {
             <br />
             <strong>初始价格设定:</strong>
             <br />1 {tokenA.symbol} = {priceRatio.toFixed(6)} {tokenB.symbol}
-            <br />1 {tokenB.symbol} = {(1 / priceRatio).toFixed(6)} {tokenA.symbol}
+            <br />1 {tokenB.symbol} = {(1 / priceRatio).toFixed(6)}{" "}
+            {tokenA.symbol}
           </div>
         )}
       </div>
@@ -465,18 +696,25 @@ const LiquidityPool: React.FC = () => {
       <div style={{ marginBottom: 20 }}>
         <h4 style={{ marginBottom: 12 }}>注入初始流动性</h4>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+            marginBottom: 12,
+          }}
+        >
           <div>
-            <label style={{ display: "block", marginBottom: 8 }}>{tokenA?.symbol || "代币A"} 数量:</label>
+            <label style={{ display: "block", marginBottom: 8 }}>
+              {tokenA?.symbol || "代币A"} 数量:
+            </label>
             <input
               type="number"
               placeholder="0.0"
               value={amountA}
               onChange={(e) => {
-                const value = e.target.value;
-                if (value === "" || (Number(value) >= 0 && !isNaN(Number(value)))) {
-                  setAmountA(value);
-                }
+                setAmountA(e.target.value);
+                autoMatchRatio(e.target.value, "A");
               }}
               min="0"
               step="any"
@@ -490,16 +728,16 @@ const LiquidityPool: React.FC = () => {
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: 8 }}>{tokenB?.symbol || "代币B"} 数量:</label>
+            <label style={{ display: "block", marginBottom: 8 }}>
+              {tokenB?.symbol || "代币B"} 数量:
+            </label>
             <input
               type="number"
               placeholder="0.0"
               value={amountB}
               onChange={(e) => {
-                const value = e.target.value;
-                if (value === "" || (Number(value) >= 0 && !isNaN(Number(value)))) {
-                  setAmountB(value);
-                }
+                setAmountB(e.target.value);
+                autoMatchRatio(e.target.value, "B");
               }}
               min="0"
               step="any"
@@ -510,16 +748,48 @@ const LiquidityPool: React.FC = () => {
                 border: "1px solid #ccc",
               }}
             />
+            {/* {currentPairInfo.price && (
+              <button
+                onClick={autoFillAmountB}
+                style={{ padding: "4px 8px", fontSize: "12px" }}
+                title="按照当前价格自动填充"
+              >
+                自动匹配
+              </button>
+            )} */}
           </div>
         </div>
         {address && isConnected ? (
           <button
             onClick={handleAddLiquidity}
-            disabled={isAdding}
+            disabled={
+              isAdding ||
+              !tokenA ||
+              !tokenB ||
+              !isValidNumber(amountA) ||
+              !isValidNumber(amountB) ||
+              !validateLiquidityRatio(
+                amountA,
+                amountB,
+                tokenA,
+                tokenB,
+                currentPairInfo.price
+              ).isValid
+            }
             style={{
               width: "100%",
               padding: 12,
-              backgroundColor: isAdding ? "#ccc" : "#4CAF50",
+              backgroundColor:
+                isAdding ||
+                !validateLiquidityRatio(
+                  amountA,
+                  amountB,
+                  tokenA,
+                  tokenB,
+                  currentPairInfo.price
+                ).isValid
+                  ? "#ccc"
+                  : "#4CAF50",
               color: "white",
               border: "none",
               borderRadius: 6,
@@ -529,7 +799,10 @@ const LiquidityPool: React.FC = () => {
             {isAdding ? "创建中..." : "创建流动性池"}
           </button>
         ) : (
-          <button style={{ width: "100%", marginTop: 8 }} onClick={openConnectModal}>
+          <button
+            style={{ width: "100%", marginTop: 8 }}
+            onClick={openConnectModal}
+          >
             连接钱包
           </button>
         )}
@@ -539,14 +812,25 @@ const LiquidityPool: React.FC = () => {
         <h4 style={{ marginBottom: 12 }}>移除流动性</h4>
 
         <div style={{ marginBottom: 12 }}>
-          <label style={{ display: "block", marginBottom: 8 }}>LP代币数量:</label>
+          <label style={{ display: "block", marginBottom: 8 }}>
+            LP代币数量: <text>{lpAmount}</text>
+          </label>
+          <div style={{ marginBottom: "8px", fontSize: "14px" }}>
+            池子总份额: {totalSupply}
+          </div>
+          <div style={{ marginBottom: "8px", fontSize: "14px" }}>
+            你的池子份额: {calculatePoolShare()}%
+          </div>
           <input
             type="number"
             placeholder="0.0"
             value={lpAmount}
             onChange={(e) => {
               const value = e.target.value;
-              if (value === "" || (Number(value) >= 0 && !isNaN(Number(value)))) {
+              if (
+                value === "" ||
+                (Number(value) >= 0 && !isNaN(Number(value)))
+              ) {
                 setLpAmount(value);
               }
             }}
@@ -563,7 +847,9 @@ const LiquidityPool: React.FC = () => {
 
         <button
           onClick={handleRemoveLiquidity}
-          disabled={isRemoving || !tokenA || !tokenB || !isValidNumber(lpAmount)}
+          disabled={
+            isRemoving || !tokenA || !tokenB || !isValidNumber(lpAmount)
+          }
           style={{
             width: "100%",
             padding: 12,
