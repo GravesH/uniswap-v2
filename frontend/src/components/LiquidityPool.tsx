@@ -293,6 +293,23 @@ const LiquidityPool: React.FC = () => {
     const share = (parseFloat(lpAmount) / parseFloat(totalSupply)) * 100;
     return share.toFixed(4);
   };
+  //查询当前交易对 地址
+  const fetchPairAddress = async () => {
+    if (!provider || !tokenA || !tokenB) return;
+    console.log("fetchPairAddress:", tokenA, tokenB);
+    // 1. 查询Pair地址
+    const factoryContract = new ethers.Contract(
+      contract_address.UNISWAP_V2_FACTORY,
+      UniswapV2FactoryAbi,
+      provider
+    );
+
+    const pairAddress = await factoryContract.getPair(
+      tokenA?.address,
+      tokenB?.address
+    );
+    return pairAddress;
+  };
   // 实时查询函数
   const fetchCurrentPairInfo = async (tokenA: Token, tokenB: Token) => {
     console.log("fetchCurrentPairInfo:", tokenA, tokenB);
@@ -300,16 +317,17 @@ const LiquidityPool: React.FC = () => {
 
     try {
       // 1. 查询Pair地址
-      const factoryContract = new ethers.Contract(
-        contract_address.UNISWAP_V2_FACTORY,
-        UniswapV2FactoryAbi,
-        provider
-      );
+      // const factoryContract = new ethers.Contract(
+      //   contract_address.UNISWAP_V2_FACTORY,
+      //   UniswapV2FactoryAbi,
+      //   provider
+      // );
 
-      const pairAddress = await factoryContract.getPair(
-        tokenA.address,
-        tokenB.address
-      );
+      // const pairAddress = await factoryContract.getPair(
+      //   tokenA.address,
+      //   tokenB.address
+      // );
+      const pairAddress = await fetchPairAddress();
       //每一个交易对都是一个  pair合约实例  通过对应合约地址实例查询当前交易对信息
       console.log("pairAddress:", pairAddress);
       if (pairAddress === ethers.ZeroAddress) {
@@ -459,14 +477,33 @@ const LiquidityPool: React.FC = () => {
       return;
     }
     setIsRemoving(true);
+
+    //授权router 移除LP
+    const pairAddress = await fetchPairAddress();
+    if (!pairAddress) {
+      alert("未找到对应的交易对地址");
+      setIsRemoving(false);
+      return;
+    }
+    const pairContract = new ethers.Contract(
+      pairAddress,
+      UniswapV2PairAbi,
+      provider!
+    );
+    // 授权路由合约花费LP代币
+    await pairContract.approve(
+      contract_address.UNISWAP_V2_ROUTER_02,
+      ethers.parseUnits(lpAmount, 18)
+    );
+    //路由合约 移除LP
+
     try {
       console.log(`移除 ${lpAmount} LP代币`);
       console.log("交易对:", `${tokenA.symbol}/${tokenB.symbol}`);
-      alert(`成功移除 ${lpAmount} LP代币`);
+      console.log(`成功移除 ${lpAmount} LP代币`);
       setLpAmount("");
     } catch (error) {
       console.error("移除流动性失败:", error);
-      alert("移除流动性失败");
     } finally {
       setIsRemoving(false);
     }
