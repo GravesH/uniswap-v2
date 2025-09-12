@@ -55,7 +55,6 @@ const LiquidityPool: React.FC = () => {
   const [lpAmount, setLpAmount] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
-  const [priceRatio, setPriceRatio] = useState<number | null>(null);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [provider1, setProvider1] = useState<ethers.JsonRpcProvider | null>(
     null
@@ -75,22 +74,6 @@ const LiquidityPool: React.FC = () => {
   const isValidNumber = (value: string) => {
     return value !== "" && !isNaN(Number(value)) && Number(value) > 0;
   };
-
-  useEffect(() => {
-    if (tokenA && tokenB && isValidNumber(amountA) && isValidNumber(amountB)) {
-      const numA = parseFloat(amountA);
-      const numB = parseFloat(amountB);
-      setPriceRatio(numA / numB);
-    } else {
-      setPriceRatio(null);
-    }
-  }, [amountA, amountB, tokenA, tokenB]);
-
-  useEffect(() => {
-    setAmountA("");
-    setAmountB("");
-    setPriceRatio(null);
-  }, [tokenA, tokenB]);
 
   const fetchBalance = async (token_address: string, decimals: number) => {
     const signer = await provider?.getSigner();
@@ -252,12 +235,14 @@ const LiquidityPool: React.FC = () => {
   // 只保留当前选中的交易对信息
   const [currentPairInfo, setCurrentPairInfo] = useState<{
     address: string | null;
-    reserves: { reserve0: string; reserve1: string } | null;
-    price: number | null;
+    reserves: { reserveA: string; reserveB: string } | null;
+    priceAB: number | null;
+    priceBA: number | null;
   }>({
     address: null,
     reserves: null,
-    price: null,
+    priceAB: null,
+    priceBA: null,
   });
   const [totalSupply, setTotalSupply] = useState<string>("0");
   //查询LP Token余额
@@ -316,22 +301,16 @@ const LiquidityPool: React.FC = () => {
     if (!provider) return;
 
     try {
-      // 1. 查询Pair地址
-      // const factoryContract = new ethers.Contract(
-      //   contract_address.UNISWAP_V2_FACTORY,
-      //   UniswapV2FactoryAbi,
-      //   provider
-      // );
-
-      // const pairAddress = await factoryContract.getPair(
-      //   tokenA.address,
-      //   tokenB.address
-      // );
       const pairAddress = await fetchPairAddress();
       //每一个交易对都是一个  pair合约实例  通过对应合约地址实例查询当前交易对信息
       console.log("pairAddress:", pairAddress);
       if (pairAddress === ethers.ZeroAddress) {
-        setCurrentPairInfo({ address: null, reserves: null, price: null });
+        setCurrentPairInfo({
+          address: null,
+          reserves: null,
+          priceAB: null,
+          priceBA: null,
+        });
         return;
       }
       await fetchLPBalance(pairAddress);
@@ -350,24 +329,28 @@ const LiquidityPool: React.FC = () => {
       console.log("reservesData:", reservesData, token0Address);
       const isTokenA0 =
         token0Address.toLowerCase() === tokenA.address.toLowerCase();
-      const reserve0 = ethers.formatUnits(
-        reservesData[0],
-        isTokenA0 ? tokenA.decimals : tokenB.decimals
-      );
-      const reserve1 = ethers.formatUnits(
-        reservesData[1],
-        isTokenA0 ? tokenB.decimals : tokenA.decimals
-      );
-      const price = Number(reserve1) / Number(reserve0);
+      // 按 UI 的 A/B 顺序取出对应的储备量并用对应 decimals 格式化
+      const reserveAraw = isTokenA0 ? reservesData[0] : reservesData[1];
+      const reserveBraw = isTokenA0 ? reservesData[1] : reservesData[0];
 
+      const reserveA = ethers.formatUnits(reserveAraw, tokenA.decimals);
+      const reserveB = ethers.formatUnits(reserveBraw, tokenB.decimals);
+      const priceAB = Number(reserveB) / Number(reserveA); // 1 A = ? B
+      const priceBA = Number(reserveA) / Number(reserveB); // 1 B = ? A
       setCurrentPairInfo({
         address: pairAddress,
-        reserves: { reserve0, reserve1 },
-        price,
+        reserves: { reserveA, reserveB },
+        priceAB,
+        priceBA,
       });
     } catch (error) {
       console.error("查询交易对信息失败:", error);
-      setCurrentPairInfo({ address: null, reserves: null, price: null });
+      setCurrentPairInfo({
+        address: null,
+        reserves: null,
+        priceAB: null,
+        priceBA: null,
+      });
     }
   };
   // 当代币选择变化时实时查询
@@ -375,7 +358,12 @@ const LiquidityPool: React.FC = () => {
     if (tokenA && tokenB) {
       fetchCurrentPairInfo(tokenA, tokenB);
     } else {
-      setCurrentPairInfo({ address: null, reserves: null, price: null });
+      setCurrentPairInfo({
+        address: null,
+        reserves: null,
+        priceAB: null,
+        priceBA: null,
+      });
     }
   }, [tokenA, tokenB, provider]);
   const handleAddLiquidity = async () => {
@@ -437,7 +425,6 @@ const LiquidityPool: React.FC = () => {
           }, 3000); // 等待3秒让区块链状态更新
           setAmountA("");
           setAmountB("");
-          setPriceRatio(null);
         }
       }, 1000); // 模拟网络延迟
     } catch (error) {
@@ -456,15 +443,19 @@ const LiquidityPool: React.FC = () => {
   //根据代币A数量自动计算代币B数量
   // 自动根据输入的一种代币计算另一种
   const autoMatchRatio = (inputValue: string, inputType: "A" | "B") => {
-    if (!currentPairInfo.price || !tokenA || !tokenB) return;
+    if (!currentPairInfo.priceAB || !tokenA || !tokenB) return;
 
     const value = parseFloat(inputValue);
-    if (isNaN(value) || value <= 0) return;
+    if (isNaN(value) || value <= 0) {
+      setAmountA("");
+      setAmountB("");
+      return;
+    }
 
     if (inputType === "A") {
-      setAmountB((value * currentPairInfo.price).toFixed(6));
+      setAmountB((value * currentPairInfo.priceAB).toFixed(6));
     } else {
-      setAmountA((value / currentPairInfo.price).toFixed(6));
+      setAmountA((value / currentPairInfo.priceAB).toFixed(6));
     }
   };
   const handleRemoveLiquidity = async () => {
@@ -605,30 +596,21 @@ const LiquidityPool: React.FC = () => {
                 )}`}
               </p>
 
-              {currentPairInfo.reserves && currentPairInfo.price && (
+              {currentPairInfo.reserves && currentPairInfo.priceAB && (
                 <>
                   <p>
-                    <strong>储备量:</strong>
+                    <strong>储备量:</strong> {tokenA?.symbol}:{" "}
+                    {currentPairInfo.reserves.reserveA} / {tokenB?.symbol}:{" "}
+                    {currentPairInfo.reserves.reserveB}
                   </p>
-                  <ul>
-                    <li>
-                      {tokenA.symbol}: {currentPairInfo.reserves.reserve0}
-                    </li>
-                    <li>
-                      {tokenB.symbol}: {currentPairInfo.reserves.reserve1}
-                    </li>
-                  </ul>
                   <p>
-                    <strong>当前价格:</strong> 1 {tokenA.symbol} ={" "}
-                    {currentPairInfo.price.toFixed(6)} {tokenB.symbol}
+                    价格比例: 1 {tokenA?.symbol} = {currentPairInfo.priceAB}{" "}
+                    {tokenB?.symbol}
                   </p>
-                  {amountA && (
-                    <div style={{ marginTop: "4px", fontSize: "14px" }}>
-                      <strong>建议数量:</strong> {amountA} {tokenA.symbol} ≈{" "}
-                      {(parseFloat(amountA) * currentPairInfo.price).toFixed(6)}{" "}
-                      {tokenB.symbol}
-                    </div>
-                  )}
+                  <p>
+                    反向价格: 1 {tokenB?.symbol} = {currentPairInfo.priceBA}{" "}
+                    {tokenA?.symbol}
+                  </p>
                 </>
               )}
             </>
@@ -708,30 +690,12 @@ const LiquidityPool: React.FC = () => {
             </select>
           </div>
         </div>
-
-        {tokenA && tokenB && priceRatio && (
-          <div
-            style={{
-              padding: 12,
-              backgroundColor: "#e8f5e8",
-              borderRadius: 6,
-              border: "1px solid #4CAF50",
-              fontSize: 14,
-              marginBottom: 16,
-            }}
-          >
-            <strong>交易对:</strong> {tokenA.symbol}/{tokenB.symbol}
-            <br />
-            <strong>初始价格设定:</strong>
-            <br />1 {tokenA.symbol} = {priceRatio.toFixed(6)} {tokenB.symbol}
-            <br />1 {tokenB.symbol} = {(1 / priceRatio).toFixed(6)}{" "}
-            {tokenA.symbol}
-          </div>
-        )}
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <h4 style={{ marginBottom: 12 }}>注入初始流动性</h4>
+        <h4 style={{ marginBottom: 12 }}>
+          {currentPairInfo.address ? "注入流动性" : "注入初始流动性"}
+        </h4>
 
         <div
           style={{
@@ -748,6 +712,7 @@ const LiquidityPool: React.FC = () => {
             <input
               type="number"
               placeholder="0.0"
+              disabled={!tokenA || !tokenB}
               value={amountA}
               onChange={(e) => {
                 setAmountA(e.target.value);
@@ -771,6 +736,7 @@ const LiquidityPool: React.FC = () => {
             <input
               type="number"
               placeholder="0.0"
+              disabled={!tokenA || !tokenB}
               value={amountB}
               onChange={(e) => {
                 setAmountB(e.target.value);
@@ -810,7 +776,7 @@ const LiquidityPool: React.FC = () => {
                 amountB,
                 tokenA,
                 tokenB,
-                currentPairInfo.price
+                currentPairInfo.priceAB
               ).isValid
             }
             style={{
@@ -823,7 +789,7 @@ const LiquidityPool: React.FC = () => {
                   amountB,
                   tokenA,
                   tokenB,
-                  currentPairInfo.price
+                  currentPairInfo.priceAB
                 ).isValid
                   ? "#ccc"
                   : "#4CAF50",
