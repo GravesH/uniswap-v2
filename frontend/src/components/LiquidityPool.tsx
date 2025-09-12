@@ -8,7 +8,7 @@ import {
   useSimulateContract,
   usePublicClient,
 } from "wagmi";
-import UniswapV2Router02 from "../abi/UniswapV2Router02.json";
+import UniswapV2Router02Abi from "../abi/UniswapV2Router02.json";
 import ERC20Abi from "../abi/ERC20.json";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import UniswapV2FactoryAbi from "../abi/UniswapV2Factory.json";
@@ -54,6 +54,7 @@ const LiquidityPool: React.FC = () => {
   const [amountB, setAmountB] = useState<string>("");
   const [lpAmount, setLpAmount] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
+  const [removePercent, setRemovePercent] = useState<number>(0); // 移除比例 %
   const [isRemoving, setIsRemoving] = useState(false);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [provider1, setProvider1] = useState<ethers.JsonRpcProvider | null>(
@@ -139,7 +140,7 @@ const LiquidityPool: React.FC = () => {
 
   const { data: simulateData, error: simulateError } = useSimulateContract({
     address: contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
-    abi: UniswapV2Router02,
+    abi: UniswapV2Router02Abi,
     functionName: "addLiquidity",
     args:
       tokenA &&
@@ -395,7 +396,7 @@ const LiquidityPool: React.FC = () => {
       setTimeout(async () => {
         const tx = await writeContractAsync({
           address: contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
-          abi: UniswapV2Router02,
+          abi: UniswapV2Router02Abi,
           functionName: "addLiquidity",
           args: [
             tokenA.address as `0x${string}`,
@@ -458,6 +459,13 @@ const LiquidityPool: React.FC = () => {
       setAmountA((value / currentPairInfo.priceAB).toFixed(6));
     }
   };
+  const handlePercentClick = (percent: number) => {
+    setRemovePercent(percent);
+    if (lpAmount) {
+      const lpToRemove = (parseFloat(lpAmount) * percent) / 100;
+      setLpAmount(lpToRemove.toString());
+    }
+  };
   const handleRemoveLiquidity = async () => {
     if (!tokenA || !tokenB || !isValidNumber(lpAmount)) {
       alert("请选择交易对并输入有效LP代币数量");
@@ -467,31 +475,74 @@ const LiquidityPool: React.FC = () => {
       openConnectModal && openConnectModal();
       return;
     }
-    setIsRemoving(true);
-
-    //授权router 移除LP
-    const pairAddress = await fetchPairAddress();
-    if (!pairAddress) {
-      alert("未找到对应的交易对地址");
-      setIsRemoving(false);
-      return;
-    }
-    const pairContract = new ethers.Contract(
-      pairAddress,
-      UniswapV2PairAbi,
-      provider!
-    );
-    // 授权路由合约花费LP代币
-    await pairContract.approve(
-      contract_address.UNISWAP_V2_ROUTER_02,
-      ethers.parseUnits(lpAmount, 18)
-    );
-    //路由合约 移除LP
-
     try {
-      console.log(`移除 ${lpAmount} LP代币`);
-      console.log("交易对:", `${tokenA.symbol}/${tokenB.symbol}`);
-      console.log(`成功移除 ${lpAmount} LP代币`);
+      setIsRemoving(true);
+
+      //授权router 移除LP
+      const pairAddress = await fetchPairAddress();
+      if (!pairAddress) {
+        alert("未找到对应的交易对地址");
+        setIsRemoving(false);
+        return;
+      }
+      //这个provider 不支持 sendTransaction  也就是说不能发起交易 只能读区块链数据！！
+      // const pairContract = new ethers.Contract(
+      //   pairAddress,
+      //   UniswapV2PairAbi,
+      //   provider!
+      // );
+      // 获取 signer（确保用户已连接钱包）
+      const signer = await provider!.getSigner();
+      console.log("signer:", ethers.parseUnits(lpAmount, 18), signer);
+      // 用 signer 创建可写的 contract
+      const pairWithSigner = new ethers.Contract(
+        pairAddress,
+        UniswapV2PairAbi,
+        signer
+      );
+      // 授权路由合约花费LP代币
+      const approveTx = await pairWithSigner.approve(
+        contract_address.UNISWAP_V2_ROUTER_02,
+        ethers.parseUnits(lpAmount, 18)
+      );
+      console.log("LP 授权交易已发送，等待确认...", approveTx);
+      const approveReceipt = await waitForTransactionReceipt(publicClient, {
+        hash: approveTx.hash,
+      });
+      console.log("LP 授权交易已确认:", approveReceipt);
+      if (approveReceipt?.status !== "success") {
+        console.error("LP 授权失败");
+        return;
+      }
+      //路由合约 移除LP
+      const routerWithSigner = new ethers.Contract(
+        contract_address.UNISWAP_V2_ROUTER_02,
+        UniswapV2Router02Abi,
+        signer
+      );
+      const tx = await routerWithSigner.removeLiquidity(
+        tokenA.address,
+        tokenB.address,
+        ethers.parseUnits(lpAmount, 18),
+        0n,
+        0n,
+        address,
+        Math.floor(Date.now() / 1000) + 60 * 20
+      );
+      console.log("移除流动性交易已发送，等待确认...", tx);
+      const receipt = await waitForTransactionReceipt(publicClient, {
+        hash: tx.hash,
+      });
+      console.log("移除流动性交易已确认:", receipt);
+      if (receipt?.status === "success") {
+        console.log("移除流动性成功");
+        await fetchCurrentPairInfo(tokenA, tokenB);
+        //更新LP余额
+        await fetchLPBalance(pairAddress);
+      } else {
+        console.error("移除流动性失败");
+        return;
+      }
       setLpAmount("");
     } catch (error) {
       console.error("移除流动性失败:", error);
@@ -811,61 +862,58 @@ const LiquidityPool: React.FC = () => {
         )}
       </div>
 
-      <div>
-        <h4 style={{ marginBottom: 12 }}>移除流动性</h4>
+      {tokenA && tokenB && (
+        <div style={{ marginTop: 30 }}>
+          <h3>移除流动性</h3>
+          <p>你当前 LP 余额: {lpAmount}</p>
 
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: "block", marginBottom: 8 }}>
-            LP代币数量: <text>{lpAmount}</text>
-          </label>
-          <div style={{ marginBottom: "8px", fontSize: "14px" }}>
-            池子总份额: {totalSupply}
+          <div style={{ marginBottom: 10 }}>
+            <label>输入百分比：</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={removePercent}
+              onChange={(e) => handlePercentClick(Number(e.target.value))}
+              style={{ width: "80px", marginRight: "10px" }}
+            />
+            %
           </div>
-          <div style={{ marginBottom: "8px", fontSize: "14px" }}>
-            你的池子份额: {calculatePoolShare()}%
+
+          <div style={{ display: "flex", gap: "10px", marginBottom: 10 }}>
+            {[25, 50, 75, 100].map((p) => (
+              <button
+                key={p}
+                onClick={() => handlePercentClick(p)}
+                style={{
+                  padding: "6px 12px",
+                  border: "1px solid #ccc",
+                  borderRadius: "6px",
+                  backgroundColor: removePercent === p ? "#007bff" : "#f9f9f9",
+                  color: removePercent === p ? "#fff" : "#000",
+                }}
+              >
+                {p}%
+              </button>
+            ))}
           </div>
-          <input
-            type="number"
-            placeholder="0.0"
-            value={lpAmount}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (
-                value === "" ||
-                (Number(value) >= 0 && !isNaN(Number(value)))
-              ) {
-                setLpAmount(value);
-              }
-            }}
-            min="0"
-            step="any"
+
+          <button
+            onClick={handleRemoveLiquidity}
+            disabled={isRemoving || removePercent <= 0}
             style={{
-              width: "100%",
-              padding: 10,
-              borderRadius: 6,
-              border: "1px solid #ccc",
+              padding: "8px 16px",
+              backgroundColor: "#dc3545",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
             }}
-          />
+          >
+            {isRemoving ? "移除中..." : "确认移除"}
+          </button>
         </div>
-
-        <button
-          onClick={handleRemoveLiquidity}
-          disabled={
-            isRemoving || !tokenA || !tokenB || !isValidNumber(lpAmount)
-          }
-          style={{
-            width: "100%",
-            padding: 12,
-            backgroundColor: isRemoving ? "#ccc" : "#f44336",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-            cursor: isRemoving ? "not-allowed" : "pointer",
-          }}
-        >
-          {isRemoving ? "移除中..." : "移除流动性"}
-        </button>
-      </div>
+      )}
     </div>
   );
 };
