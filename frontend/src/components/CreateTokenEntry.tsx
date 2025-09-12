@@ -5,7 +5,7 @@ import TokenFactoryAbi from "../abi/TokenFactory.json";
 import { contract_address } from "../constants/index";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { waitForTransactionReceipt } from "viem/actions";
-
+import { useTokenStore } from "../store/tokenStore";
 import { boolean, is } from "@metamask/superstruct";
 // 新增 ERC20 代币生成入口组件，支持手动输入名称和数量
 const CreateTokenEntry: React.FC = () => {
@@ -13,9 +13,11 @@ const CreateTokenEntry: React.FC = () => {
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenAmount, setTokenAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false); // 新增加载状态
+  const reloadFromFactory = useTokenStore((s) => s.reloadFromFactory);
   // 1. 使用 useAccount 获取连接状态
   const { address, isConnected, isDisconnected } = useAccount();
   const publicClient = usePublicClient();
+  console.log("publicClient:", publicClient);
   const { openConnectModal } = useConnectModal();
   const { writeContract, writeContractAsync } = useWriteContract();
   //监听事件
@@ -28,6 +30,9 @@ const CreateTokenEntry: React.FC = () => {
       console.log("Token created and minted");
       console.log("Token 创建并铸币成功！");
       console.log("监听到 TokenCreated 事件，代币创建成功！", logs);
+      if (publicClient) {
+        reloadFromFactory(publicClient);
+      }
     },
   });
   const {
@@ -103,10 +108,13 @@ const CreateTokenEntry: React.FC = () => {
     const receipt = await waitForTransactionReceipt(publicClient, { hash: tx });
     console.log("receiptA:", receipt);
     if (receipt?.status !== "success") {
-      console.error("A 授权失败");
+      console.error("A mint失败");
       return;
     }
-    console.log("A 授权成功");
+    console.log("A mint成功");
+    if (publicClient) {
+      reloadFromFactory(publicClient);
+    }
   };
   return (
     <div
