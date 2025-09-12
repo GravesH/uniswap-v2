@@ -53,6 +53,7 @@ const LiquidityPool: React.FC = () => {
   const [amountA, setAmountA] = useState<string>("");
   const [amountB, setAmountB] = useState<string>("");
   const [lpAmount, setLpAmount] = useState<string>("");
+  const [lpToRemove, setLpToRemove] = useState<string>("0");
   const [isAdding, setIsAdding] = useState(false);
   const [removePercent, setRemovePercent] = useState<number>(0); // 移除比例 %
   const [isRemoving, setIsRemoving] = useState(false);
@@ -125,7 +126,24 @@ const LiquidityPool: React.FC = () => {
       contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
     ],
   });
-
+  const [removeSuccess, setRemoveSuccess] = useState(false);
+  useEffect(() => {
+    if (removeSuccess && tokenA && tokenB) {
+      console.log("开始查询新创建的池子信息...");
+      fetchCurrentPairInfo(tokenA, tokenB);
+      setLpToRemove("0");
+      setRemovePercent(0);
+    }
+  }, [removeSuccess, tokenA, tokenB]);
+  const [createSuccess, setCreateSuccess] = useState(false);
+  useEffect(() => {
+    if (createSuccess && tokenA && tokenB) {
+      console.log("开始查询新创建的池子信息...");
+      fetchCurrentPairInfo(tokenA, tokenB);
+      setAmountA("");
+      setAmountB("");
+    }
+  }, [createSuccess, tokenA, tokenB]);
   useWatchContractEvent({
     address: contract_address.UNISWAP_V2_PAIR as
       | `0x${string}`
@@ -417,15 +435,7 @@ const LiquidityPool: React.FC = () => {
         if (receipt.status === "success") {
           console.log("交易已确认:", receipt);
           console.log("流动性池创建成功");
-          // 添加延迟以确保区块链状态更新
-          setTimeout(async () => {
-            if (tokenA && tokenB) {
-              console.log("开始查询新创建的池子信息...");
-              await fetchCurrentPairInfo(tokenA, tokenB);
-            }
-          }, 3000); // 等待3秒让区块链状态更新
-          setAmountA("");
-          setAmountB("");
+          setCreateSuccess(true);
         }
       }, 1000); // 模拟网络延迟
     } catch (error) {
@@ -463,7 +473,7 @@ const LiquidityPool: React.FC = () => {
     setRemovePercent(percent);
     if (lpAmount) {
       const lpToRemove = (parseFloat(lpAmount) * percent) / 100;
-      setLpAmount(lpToRemove.toString());
+      setLpToRemove(lpToRemove.toString());
     }
   };
   const handleRemoveLiquidity = async () => {
@@ -503,7 +513,7 @@ const LiquidityPool: React.FC = () => {
       // 授权路由合约花费LP代币
       const approveTx = await pairWithSigner.approve(
         contract_address.UNISWAP_V2_ROUTER_02,
-        ethers.parseUnits(lpAmount, 18)
+        ethers.parseUnits(lpToRemove, 18)
       );
       console.log("LP 授权交易已发送，等待确认...", approveTx);
       const approveReceipt = await waitForTransactionReceipt(publicClient, {
@@ -523,7 +533,7 @@ const LiquidityPool: React.FC = () => {
       const tx = await routerWithSigner.removeLiquidity(
         tokenA.address,
         tokenB.address,
-        ethers.parseUnits(lpAmount, 18),
+        ethers.parseUnits(lpToRemove, 18),
         0n,
         0n,
         address,
@@ -536,9 +546,9 @@ const LiquidityPool: React.FC = () => {
       console.log("移除流动性交易已确认:", receipt);
       if (receipt?.status === "success") {
         console.log("移除流动性成功");
-        await fetchCurrentPairInfo(tokenA, tokenB);
-        //更新LP余额
-        await fetchLPBalance(pairAddress);
+        setRemoveSuccess(true);
+
+        // await fetchLPBalance(pairAddress);
       } else {
         console.error("移除流动性失败");
         return;
@@ -877,7 +887,7 @@ const LiquidityPool: React.FC = () => {
               onChange={(e) => handlePercentClick(Number(e.target.value))}
               style={{ width: "80px", marginRight: "10px" }}
             />
-            %
+            %<label>待移除LP数量：{lpToRemove}</label>
           </div>
 
           <div style={{ display: "flex", gap: "10px", marginBottom: 10 }}>
