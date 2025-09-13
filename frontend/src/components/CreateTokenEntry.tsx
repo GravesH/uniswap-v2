@@ -17,7 +17,6 @@ const CreateTokenEntry: React.FC = () => {
   // 1. 使用 useAccount 获取连接状态
   const { address, isConnected, isDisconnected } = useAccount();
   const publicClient = usePublicClient();
-  console.log("publicClient:", publicClient);
   const { openConnectModal } = useConnectModal();
   const { writeContract, writeContractAsync } = useWriteContract();
   //监听事件
@@ -99,6 +98,11 @@ const CreateTokenEntry: React.FC = () => {
 
   //写入合约
   const writeContractMethod = async () => {
+    if (!publicClient) {
+      console.error("PublicClient 未初始化");
+      return;
+    }
+
     const tx = await writeContractAsync({
       address: contract_address.TOKEN_FACTORY as `0x${string}`,
       abi: TokenFactoryAbi,
@@ -112,9 +116,6 @@ const CreateTokenEntry: React.FC = () => {
       return;
     }
     console.log("A mint成功");
-    if (publicClient) {
-      reloadFromFactory(publicClient);
-    }
   };
   return (
     <div
