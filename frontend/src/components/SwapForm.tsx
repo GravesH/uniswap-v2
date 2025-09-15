@@ -7,6 +7,10 @@ import { parseUnits, formatUnits, ethers } from "ethers";
 import UniswapV2PairAbi from "../abi/UniswapV2Pair.json";
 import UniswapV2FactoryAbi from "../abi/UniswapV2Factory.json";
 import { contract_address } from "../constants/index";
+import UniswapV2Router02Abi from "../abi/UniswapV2Router02.json";
+import { waitForTransactionReceipt } from "viem/actions";
+import ERC20Abi from "../abi/ERC20.json";
+import { usePublicClient } from "wagmi";
 
 interface Token {
   address: string;
@@ -28,6 +32,7 @@ const SwapForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pairExists, setPairExists] = useState(true);
+  const publicClient = usePublicClient();
   // 初始化 provider
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).ethereum) {
@@ -98,18 +103,109 @@ const SwapForm: React.FC = () => {
     updateEstimation();
   }, [amountIn, tokenIn, tokenOut, provider]);
 
+  const checkAllowance = async () => {
+    if (!tokenIn || !tokenIn.address) {
+      setError("请选择支付代币");
+      return false;
+    }
+    if (!address) {
+      setError("钱包未连接");
+      return false;
+    }
+    if (!contract_address.UNISWAP_V2_ROUTER_02) {
+      setError("路由地址未配置");
+      return false;
+    }
+    console.log(tokenIn, address, "address");
+    const tokenContract = new ethers.Contract(
+      tokenIn?.address || "",
+      ERC20Abi,
+      provider
+    );
+    const allowance = await tokenContract.allowance(
+      address,
+      contract_address.UNISWAP_V2_ROUTER_02
+    );
+    console.log(allowance, "allowance");
+    if (allowance < parseUnits(amountIn, tokenIn?.decimals)) {
+      setError("请先授权");
+      return false;
+    }
+    return true;
+  };
+  const handleApprove = async () => {
+    console.log("handleApprove");
+    const signer = await provider!.getSigner();
+    console.log(signer, "signer");
+    const tokenContract = new ethers.Contract(
+      tokenIn?.address || "",
+      ERC20Abi,
+      signer
+    );
+    const approvalTx = await tokenContract.approve(
+      contract_address.UNISWAP_V2_ROUTER_02,
+      parseUnits(amountIn, tokenIn?.decimals)
+    );
+    await approvalTx.wait();
+    console.log("ERC20 授权交易已发送，等待确认...", approvalTx);
+    if (!publicClient) {
+      console.error("publicClient 未定义，无法等待交易回执");
+      return;
+    }
+    const approveReceipt = await waitForTransactionReceipt(publicClient, {
+      hash: approvalTx.hash,
+    });
+    if (approveReceipt?.status !== "success") {
+      console.error("LP 授权失败");
+      setError("LP 授权失败");
+      return;
+    }
+    console.log("LP 授权成功");
+  };
   // 点击 Swap
   const handleSwap = async () => {
     if (!tokenIn || !tokenOut || !amountIn || !provider) {
       setError("请选择代币并输入数量");
       return;
     }
-
     setLoading(true);
     try {
+      const isApproved = await checkAllowance();
+      if (!isApproved) {
+        await handleApprove();
+      }
+      //开始swap
+      const signer = await provider.getSigner();
+      const routerContract = new ethers.Contract(
+        contract_address.UNISWAP_V2_ROUTER_02,
+        UniswapV2Router02Abi,
+        signer
+      );
+      const tx = await routerContract.swapExactTokensForTokens(
+        parseUnits(amountIn, tokenIn.decimals),
+        0,
+        [tokenIn.address, tokenOut.address],
+        address,
+        Date.now() + 1000 * 60 * 10
+      );
+      await tx.wait();
+      console.log("兑换交易已发送，等待确认...", tx);
+      if (!publicClient) {
+        console.error("publicClient 未定义，无法等待交易回执");
+        return;
+      }
+      const receipt = await waitForTransactionReceipt(publicClient, {
+        hash: tx.hash,
+      });
+      if (receipt?.status !== "success") {
+        console.error("兑换交易失败");
+        setError("兑换交易失败");
+        return;
+      }
+      console.log("兑换交易成功");
+
       // ⚠️ TODO: 替换为实际合约调用
       console.log(`Swap ${amountIn} ${tokenIn.symbol} -> ${tokenOut.symbol}`);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
       setError("");
       alert("兑换成功！");
     } catch (err) {
