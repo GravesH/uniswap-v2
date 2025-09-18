@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { useAccount, useReadContract, useWatchContractEvent, useWriteContract, useSimulateContract, usePublicClient } from "wagmi";
+import { useAccount, useReadContract, useWatchContractEvent, useWriteContract, useSimulateContract, usePublicClient, useDisconnect } from "wagmi";
 import TokenFactoryAbi from "../abi/TokenFactory.json";
 import { contract_address } from "../constants/index";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -19,6 +19,8 @@ const CreateTokenEntry: React.FC = () => {
   const publicClient = usePublicClient();
   const { openConnectModal } = useConnectModal();
   const { writeContract, writeContractAsync } = useWriteContract();
+  // 新增：使用 useDisconnect hook 实现断开连接功能
+  const { disconnect } = useDisconnect();
   //监听事件
   useWatchContractEvent({
     address: contract_address.TOKEN_FACTORY as `0x${string}`,
@@ -151,9 +153,25 @@ const CreateTokenEntry: React.FC = () => {
         />
       </div>
       {address && isConnected ? (
-        <button style={{ width: "100%" }} onClick={generateToken}>
-          {isLoading ? "加载中..." : "生成 ERC20 代币"}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={{ flex: 1 }} onClick={generateToken}>
+            {isLoading ? "加载中..." : "生成 ERC20 代币"}
+          </button>
+          <button 
+            style={{ 
+              flex: 1, 
+              backgroundColor: '#f44336', 
+              color: 'white',
+              border: 'none',
+              padding: 8,
+              borderRadius: 4,
+              cursor: 'pointer'
+            }} 
+            onClick={disconnect}
+          >
+            断开连接
+          </button>
+        </div>
       ) : (
         <button style={{ width: "100%", marginTop: 8 }} onClick={openConnectModal}>
           连接钱包

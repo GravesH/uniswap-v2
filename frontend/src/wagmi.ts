@@ -1,6 +1,7 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { arbitrum, base, mainnet, optimism, polygon, sepolia } from "wagmi/chains";
 import { http, webSocket } from "wagmi";
+import { request, gql } from "graphql-request";
 import { localhost } from "./chain"; //本地部署的区块链网络配置
 //核心作用就是告诉你的前端应用应该去连接哪些区块链网络、
 // 如何使用这些网络，以及如何与用户的钱包进行安全交互！！！！
