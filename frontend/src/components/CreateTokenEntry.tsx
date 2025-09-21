@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { useAccount, useReadContract, useWatchContractEvent, useWriteContract, useSimulateContract, usePublicClient, useDisconnect } from "wagmi";
+import {
+  useAccount,
+  useReadContract,
+  useWatchContractEvent,
+  useWriteContract,
+  useSimulateContract,
+  usePublicClient,
+  useDisconnect,
+} from "wagmi";
 import TokenFactoryAbi from "../abi/TokenFactory.json";
 import { contract_address } from "../constants/index";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { waitForTransactionReceipt } from "viem/actions";
 import { useTokenStore } from "../store/tokenStore";
-import { boolean, is } from "@metamask/superstruct";
 // 新增 ERC20 代币生成入口组件，支持手动输入名称和数量
 const CreateTokenEntry: React.FC = () => {
   const [tokenName, setTokenName] = useState("");
@@ -153,21 +160,21 @@ const CreateTokenEntry: React.FC = () => {
         />
       </div>
       {address && isConnected ? (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <button style={{ flex: 1 }} onClick={generateToken}>
             {isLoading ? "加载中..." : "生成 ERC20 代币"}
           </button>
-          <button 
-            style={{ 
-              flex: 1, 
-              backgroundColor: '#f44336', 
-              color: 'white',
-              border: 'none',
+          <button
+            style={{
+              flex: 1,
+              backgroundColor: "#f44336",
+              color: "white",
+              border: "none",
               padding: 8,
               borderRadius: 4,
-              cursor: 'pointer'
-            }} 
-            onClick={disconnect}
+              cursor: "pointer",
+            }}
+            onClick={() => disconnect()}
           >
             断开连接
           </button>

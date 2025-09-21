@@ -41,9 +41,7 @@ const ChainSwitcherModal: React.FC = () => {
     window.ethereum.on("chainChanged", handleChainChanged);
 
     // 初始化
-    window.ethereum
-      .request({ method: "eth_chainId" })
-      .then((chainIdHex: string) => handleChainChanged(chainIdHex));
+    window.ethereum.request({ method: "eth_chainId" }).then((chainIdHex: string) => handleChainChanged(chainIdHex));
 
     return () => {
       window.ethereum.removeListener("chainChanged", handleChainChanged);
@@ -103,20 +101,14 @@ const ChainSwitcherModal: React.FC = () => {
         切换链
       </Button>
 
-      <Modal
-        title="选择链"
-        visible={visible}
-        onCancel={() => setVisible(false)}
-        footer={null}
-      >
+      <Modal title="选择链" open={visible} onCancel={() => setVisible(false)} footer={null}>
         <List
           dataSource={chains}
           renderItem={(chain) => (
             <List.Item
               style={{
                 cursor: "pointer",
-                backgroundColor:
-                  currentChain === chain.chainId ? "#e6f7ff" : "white",
+                backgroundColor: currentChain === chain.chainId ? "#e6f7ff" : "white",
               }}
               onClick={() => switchChain(chain.chainId)}
             >
