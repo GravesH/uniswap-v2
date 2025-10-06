@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
+    "base64-sol": "^1.0.1",
     "dotenv": "^17.2.2",
     "ethers": "^6.15.0"
   }
