@@ -1,4 +1,5 @@
 import React from "react";
+import { Select } from "antd";
 
 interface Token {
   address: string;
@@ -14,30 +15,25 @@ interface TokenSelectorProps {
   onSelect: (token: Token) => void;
 }
 
-const TokenSelector: React.FC<TokenSelectorProps> = ({
-  label,
-  tokens,
-  selectedToken,
-  onSelect
-}) => {
+const TokenSelector: React.FC<TokenSelectorProps> = ({ label, tokens, selectedToken, onSelect }) => {
   return (
     <div style={{ marginBottom: 8 }}>
       <label>{label}</label>
-      <select 
-        value={selectedToken?.address || ''}
-        onChange={(e) => {
-          const token = tokens.find(t => t.address === e.target.value);
+      <Select
+        value={selectedToken?.address || ""}
+        onChange={(value) => {
+          const token = tokens.find((t) => t.address === value);
           token && onSelect(token);
         }}
-        style={{ width: "100%", padding: 8 }}
+        style={{ width: "100%" }}
       >
-        <option value="">选择代币</option>
+        <Select.Option value="">选择代币</Select.Option>
         {tokens.map((token) => (
-          <option key={token.address} value={token.address}>
+          <Select.Option key={token.address} value={token.address}>
             {token.symbol}
-          </option>
+          </Select.Option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 };

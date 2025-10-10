@@ -127,60 +127,39 @@ const CreateTokenEntry: React.FC = () => {
     console.log("A mint成功");
   };
   return (
-    <div
-      style={{
-        marginBottom: 32,
-        padding: 16,
-        border: "1px solid #eee",
-        borderRadius: 8,
-      }}
-    >
-      <h3>测试网生成 ERC20 代币</h3>
-      <div style={{ marginBottom: 8 }}>
-        <input
-          type="text"
-          placeholder="代币名称"
-          value={tokenName}
-          onChange={(e) => setTokenName(e.target.value)}
-          style={{ width: "100%", padding: 8, marginBottom: 8 }}
-        />
+    <div className="space-y-4">
+      <h3 className="text-lg md:text-xl font-semibold mb-2">测试网生成 ERC20 代币</h3>
+      <div className="grid gap-2">
+        <input type="text" placeholder="代币名称" value={tokenName} onChange={(e) => setTokenName(e.target.value)} className="input-neon" />
         <input
           type="text"
           placeholder="代币符号"
           value={tokenSymbol}
           onChange={(e) => setTokenSymbol(e.target.value)}
-          style={{ width: "100%", padding: 8, marginBottom: 8 }}
+          className="input-neon"
         />
         <input
           type="number"
           placeholder="初始发行数量"
           value={tokenAmount}
           onChange={(e) => setTokenAmount(Number(e.target.value))}
-          style={{ width: "100%", padding: 8, marginBottom: 8 }}
+          className="input-neon"
         />
       </div>
       {address && isConnected ? (
-        <div style={{ display: "flex", gap: 8 }}>
-          <button style={{ flex: 1 }} onClick={generateToken}>
+        <div className="flex gap-3">
+          <button className="btn-neon flex-1" onClick={generateToken}>
             {isLoading ? "加载中..." : "生成 ERC20 代币"}
           </button>
           <button
-            style={{
-              flex: 1,
-              backgroundColor: "#f44336",
-              color: "white",
-              border: "none",
-              padding: 8,
-              borderRadius: 4,
-              cursor: "pointer",
-            }}
+            className="flex-1 rounded-lg px-4 py-3 font-semibold border border-red-400/40 text-red-300 hover:bg-red-500/10 transition"
             onClick={() => disconnect()}
           >
             断开连接
           </button>
         </div>
       ) : (
-        <button style={{ width: "100%", marginTop: 8 }} onClick={openConnectModal}>
+        <button className="btn-neon w-full" onClick={openConnectModal}>
           连接钱包
         </button>
       )}

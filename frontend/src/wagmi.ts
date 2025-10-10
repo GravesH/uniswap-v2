@@ -10,7 +10,7 @@ export const config = getDefaultConfig({
   //作用：连接钱包
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
   // chains: [mainnet, polygon, optimism, arbitrum, base, ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === "true" ? [sepolia] : []), localhost],
-  chains: [...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === "true" ? [sepolia] : []), localhost],
+  chains: [localhost, ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === "true" ? [sepolia] : [])],
   transports: {
     // [mainnet.id]: http(`https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`),
     // [polygon.id]: http(`https://polygon-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`),

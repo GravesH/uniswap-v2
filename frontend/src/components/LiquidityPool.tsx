@@ -37,9 +37,7 @@ const LiquidityPool: React.FC = () => {
   const [removePercent, setRemovePercent] = useState<number>(0); // 移除比例 %
   const [isRemoving, setIsRemoving] = useState(false);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  const [provider1, setProvider1] = useState<ethers.JsonRpcProvider | null>(
-    null
-  );
+  const [provider1, setProvider1] = useState<ethers.JsonRpcProvider | null>(null);
   const { address, isConnected, isDisconnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const publicClient = usePublicClient();
@@ -60,11 +58,7 @@ const LiquidityPool: React.FC = () => {
   const fetchBalance = async (token_address: string, decimals: number) => {
     const signer = await provider?.getSigner();
     const address = await signer?.getAddress();
-    const tokenContract = new ethers.Contract(
-      token_address as `0x${string}`,
-      UniswapV2PairAbi,
-      provider!
-    );
+    const tokenContract = new ethers.Contract(token_address as `0x${string}`, UniswapV2PairAbi, provider!);
     const balance = await tokenContract.balanceOf(address);
     return ethers.formatUnits(balance, decimals);
   };
@@ -74,10 +68,7 @@ const LiquidityPool: React.FC = () => {
 
     const balances = [];
     for (const token of [tokenA, tokenB]) {
-      const balance = await fetchBalance(
-        token.address as `0x${string}`,
-        token.decimals
-      );
+      const balance = await fetchBalance(token.address as `0x${string}`, token.decimals);
       balances.push(balance);
     }
 
@@ -91,20 +82,14 @@ const LiquidityPool: React.FC = () => {
     address: tokenA?.address as `0x${string}` | undefined,
     abi: ERC20Abi,
     functionName: "allowance",
-    args: [
-      address as `0x${string}`,
-      contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
-    ],
+    args: [address as `0x${string}`, contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`],
   });
 
   const { data: allowanceB } = useReadContract({
     address: tokenB?.address as `0x${string}` | undefined,
     abi: ERC20Abi,
     functionName: "allowance",
-    args: [
-      address as `0x${string}`,
-      contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
-    ],
+    args: [address as `0x${string}`, contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`],
   });
   const [removeSuccess, setRemoveSuccess] = useState(false);
   useEffect(() => {
@@ -125,10 +110,7 @@ const LiquidityPool: React.FC = () => {
     }
   }, [createSuccess, tokenA, tokenB]);
   useWatchContractEvent({
-    address: contract_address.UNISWAP_V2_PAIR as
-      | `0x${string}`
-      | `0x${string}`[]
-      | undefined,
+    address: contract_address.UNISWAP_V2_PAIR as `0x${string}` | `0x${string}`[] | undefined,
     abi: UniswapV2PairAbi,
     eventName: "Transfer",
     onLogs(logs) {
@@ -141,31 +123,20 @@ const LiquidityPool: React.FC = () => {
     abi: UniswapV2Router02Abi,
     functionName: "addLiquidity",
     args:
-      tokenA &&
-      tokenB &&
-      isValidNumber(amountA) &&
-      isValidNumber(amountB) &&
-      address
+      tokenA && tokenB && isValidNumber(amountA) && isValidNumber(amountB) && address
         ? [
             tokenA.address,
             tokenB.address,
             ethers.parseUnits(amountA, tokenA.decimals),
             ethers.parseUnits(amountB, tokenB.decimals),
-            (ethers.parseUnits(amountA, tokenA.decimals) * BigInt(99)) /
-              BigInt(100),
-            (ethers.parseUnits(amountB, tokenB.decimals) * BigInt(99)) /
-              BigInt(100),
+            (ethers.parseUnits(amountA, tokenA.decimals) * BigInt(99)) / BigInt(100),
+            (ethers.parseUnits(amountB, tokenB.decimals) * BigInt(99)) / BigInt(100),
             address,
             BigInt(Math.floor(Date.now() / 1000) + 1200),
           ]
         : undefined,
     query: {
-      enabled:
-        !!tokenA &&
-        !!tokenB &&
-        isValidNumber(amountA) &&
-        isValidNumber(amountB) &&
-        !!address,
+      enabled: !!tokenA && !!tokenB && isValidNumber(amountA) && isValidNumber(amountB) && !!address,
     },
   });
 
@@ -178,12 +149,8 @@ const LiquidityPool: React.FC = () => {
     console.log("tokenB:", tokenB);
   }, [tokenA, tokenB]);
   const handleApprove = async () => {
-    const amountANums = isValidNumber(amountA)
-      ? ethers.parseUnits(amountA, tokenA?.decimals || 18)
-      : BigInt(0);
-    const amountBNums = isValidNumber(amountB)
-      ? ethers.parseUnits(amountB, tokenB?.decimals || 18)
-      : BigInt(0);
+    const amountANums = isValidNumber(amountA) ? ethers.parseUnits(amountA, tokenA?.decimals || 18) : BigInt(0);
+    const amountBNums = isValidNumber(amountB) ? ethers.parseUnits(amountB, tokenB?.decimals || 18) : BigInt(0);
 
     console.log("amountANums:", amountANums);
     console.log("amountBNums:", amountBNums);
@@ -195,10 +162,7 @@ const LiquidityPool: React.FC = () => {
         address: tokenA?.address as `0x${string}`,
         abi: ERC20Abi,
         functionName: "approve",
-        args: [
-          contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
-          amountANums,
-        ],
+        args: [contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`, amountANums],
       });
       if (!publicClient) {
         console.error("publicClient 未定义");
@@ -221,10 +185,7 @@ const LiquidityPool: React.FC = () => {
         address: tokenB?.address as `0x${string}`,
         abi: ERC20Abi,
         functionName: "approve",
-        args: [
-          contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
-          amountBNums,
-        ],
+        args: [contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`, amountBNums],
       });
       if (!publicClient) {
         console.error("publicClient 未定义，无法等待交易回执");
@@ -259,11 +220,7 @@ const LiquidityPool: React.FC = () => {
     if (!addr || !address || !provider) return "0";
 
     try {
-      const pairContract = new ethers.Contract(
-        addr as `0x${string}`,
-        UniswapV2PairAbi,
-        provider
-      );
+      const pairContract = new ethers.Contract(addr as `0x${string}`, UniswapV2PairAbi, provider);
 
       //获取当前pair的 总份额
       const totalSupply = await pairContract.totalSupply();
@@ -292,16 +249,9 @@ const LiquidityPool: React.FC = () => {
     if (!provider || !tokenA || !tokenB) return;
     console.log("fetchPairAddress:", tokenA, tokenB);
     // 1. 查询Pair地址
-    const factoryContract = new ethers.Contract(
-      contract_address.UNISWAP_V2_FACTORY,
-      UniswapV2FactoryAbi,
-      provider
-    );
+    const factoryContract = new ethers.Contract(contract_address.UNISWAP_V2_FACTORY, UniswapV2FactoryAbi, provider);
 
-    const pairAddress = await factoryContract.getPair(
-      tokenA?.address,
-      tokenB?.address
-    );
+    const pairAddress = await factoryContract.getPair(tokenA?.address, tokenB?.address);
     return pairAddress;
   };
   // 实时查询函数
@@ -325,19 +275,11 @@ const LiquidityPool: React.FC = () => {
       await fetchLPBalance(pairAddress);
 
       // 2. 查询储备量和价格
-      const pairContract = new ethers.Contract(
-        pairAddress,
-        UniswapV2PairAbi,
-        provider
-      );
+      const pairContract = new ethers.Contract(pairAddress, UniswapV2PairAbi, provider);
       console.log("pairContract:", pairContract);
-      const [reservesData, token0Address] = await Promise.all([
-        pairContract.getReserves(),
-        pairContract.token0(),
-      ]);
+      const [reservesData, token0Address] = await Promise.all([pairContract.getReserves(), pairContract.token0()]);
       console.log("reservesData:", reservesData, token0Address);
-      const isTokenA0 =
-        token0Address.toLowerCase() === tokenA.address.toLowerCase();
+      const isTokenA0 = token0Address.toLowerCase() === tokenA.address.toLowerCase();
       // 按 UI 的 A/B 顺序取出对应的储备量并用对应 decimals 格式化
       const reserveAraw = isTokenA0 ? reservesData[0] : reservesData[1];
       const reserveBraw = isTokenA0 ? reservesData[1] : reservesData[0];
@@ -376,12 +318,7 @@ const LiquidityPool: React.FC = () => {
     }
   }, [tokenA, tokenB, provider]);
   const handleAddLiquidity = async () => {
-    if (
-      !tokenA ||
-      !tokenB ||
-      !isValidNumber(amountA) ||
-      !isValidNumber(amountB)
-    ) {
+    if (!tokenA || !tokenB || !isValidNumber(amountA) || !isValidNumber(amountB)) {
       alert("请选择两种代币并输入有效数量");
       return;
     }
@@ -499,16 +436,9 @@ const LiquidityPool: React.FC = () => {
       const signer = await provider!.getSigner();
       console.log("signer:", ethers.parseUnits(lpAmount, 18), signer);
       // 用 signer 创建可写的 contract
-      const pairWithSigner = new ethers.Contract(
-        pairAddress,
-        UniswapV2PairAbi,
-        signer
-      );
+      const pairWithSigner = new ethers.Contract(pairAddress, UniswapV2PairAbi, signer);
       // 授权路由合约花费LP代币
-      const approveTx = await pairWithSigner.approve(
-        contract_address.UNISWAP_V2_ROUTER_02,
-        ethers.parseUnits(lpToRemove, 18)
-      );
+      const approveTx = await pairWithSigner.approve(contract_address.UNISWAP_V2_ROUTER_02, ethers.parseUnits(lpToRemove, 18));
       console.log("LP 授权交易已发送，等待确认...", approveTx);
       if (!publicClient) {
         console.error("publicClient 未定义，无法等待交易回执");
@@ -523,11 +453,7 @@ const LiquidityPool: React.FC = () => {
         return;
       }
       //路由合约 移除LP
-      const routerWithSigner = new ethers.Contract(
-        contract_address.UNISWAP_V2_ROUTER_02,
-        UniswapV2Router02Abi,
-        signer
-      );
+      const routerWithSigner = new ethers.Contract(contract_address.UNISWAP_V2_ROUTER_02, UniswapV2Router02Abi, signer);
       const tx = await routerWithSigner.removeLiquidity(
         tokenA.address,
         tokenB.address,
@@ -565,14 +491,7 @@ const LiquidityPool: React.FC = () => {
     tokenB: Token | null,
     currentPrice: number | null
   ): { isValid: boolean; message: string; suggestedAmountB?: string } => {
-    if (
-      !currentPairInfo.address &&
-      tokenA &&
-      tokenB &&
-      amountA &&
-      amountB &&
-      !currentPrice
-    ) {
+    if (!currentPairInfo.address && tokenA && tokenB && amountA && amountB && !currentPrice) {
       return { isValid: true, message: "请先创建流动性池" };
     }
     if (!tokenA || !tokenB || !amountA || !amountB || !currentPrice) {
@@ -594,9 +513,7 @@ const LiquidityPool: React.FC = () => {
     if (deviation > 0.001) {
       return {
         isValid: false,
-        message: `比例不匹配！当前价格: 1 ${
-          tokenA.symbol
-        } = ${currentPrice.toFixed(6)} ${tokenB.symbol}`,
+        message: `比例不匹配！当前价格: 1 ${tokenA.symbol} = ${currentPrice.toFixed(6)} ${tokenB.symbol}`,
         suggestedAmountB: expectedB.toFixed(6),
       };
     }
@@ -604,330 +521,238 @@ const LiquidityPool: React.FC = () => {
     return { isValid: true, message: "比例正确" };
   };
   return (
-    <div
-      style={{
-        padding: 20,
-        border: "1px solid #ddd",
-        borderRadius: 12,
-        maxWidth: 500,
-        margin: "0 auto",
-        backgroundColor: "#fafafa",
-      }}
-    >
-      <h3 style={{ marginBottom: 20, textAlign: "center" }}>创建流动性池</h3>
+    <div className="space-y-4">
+      <div className="glass-card p-5 md:p-6">
+        <h3 className="text-lg font-semibold mb-4 text-center">创建流动性池</h3>
 
-      <div
-        style={{
-          marginBottom: 16,
-          padding: 12,
-          backgroundColor: "#fff3cd",
-          borderRadius: 6,
-        }}
-      >
-        <strong>提示：</strong>请确保你拥有足够的两类代币来创建流动性池
-      </div>
-      {tokenA && tokenB && (
         <div
           style={{
-            marginTop: "20px",
-            padding: "12px",
-            backgroundColor: "#e7f3ff",
-            borderRadius: "8px",
+            marginBottom: 16,
+            padding: 12,
+            backgroundColor: "#ffffff",
+            borderRadius: 8,
+            border: "1px solid rgba(148,163,184,0.3)",
+            color: "#0b0f1a",
           }}
         >
+          <strong className="text-sky-300">提示：</strong>请确保你拥有足够的两类代币来创建流动性池
+        </div>
+
+        {tokenA && tokenB && (
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              marginTop: "20px",
+              padding: "12px",
+              backgroundColor: "#ffffff",
+              borderRadius: "8px",
+              border: "1px solid rgba(148,163,184,0.3)",
             }}
           >
-            <h4>
-              {tokenA.symbol}/{tokenB.symbol} 池子信息
-            </h4>
-            <button
-              onClick={() => fetchCurrentPairInfo(tokenA, tokenB)}
-              style={{ padding: "4px 8px", fontSize: "12px" }}
-            >
-              刷新
-            </button>
-          </div>
-
-          {currentPairInfo.address ? (
-            <>
-              <p>
-                <strong>池子地址:</strong>{" "}
-                {`${currentPairInfo.address.substring(
-                  0,
-                  6
-                )}...${currentPairInfo.address.substring(
-                  currentPairInfo.address.length - 4
-                )}`}
-              </p>
-
-              {currentPairInfo.reserves && currentPairInfo.priceAB && (
-                <>
-                  <p>
-                    <strong>储备量:</strong> {tokenA?.symbol}:{" "}
-                    {currentPairInfo.reserves.reserveA} / {tokenB?.symbol}:{" "}
-                    {currentPairInfo.reserves.reserveB}
-                  </p>
-                  <p>
-                    价格比例: 1 {tokenA?.symbol} = {currentPairInfo.priceAB}{" "}
-                    {tokenB?.symbol}
-                  </p>
-                  <p>
-                    反向价格: 1 {tokenB?.symbol} = {currentPairInfo.priceBA}{" "}
-                    {tokenA?.symbol}
-                  </p>
-                </>
-              )}
-            </>
-          ) : (
-            <p>该交易对尚未创建流动性池</p>
-          )}
-        </div>
-      )}
-      <div style={{ marginBottom: 20 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-            marginBottom: 16,
-          }}
-        >
-          <div>
-            <label
-              style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}
-            >
-              代币A:
-            </label>
-            <select
-              value={tokenA?.address || ""}
-              onChange={(e) => {
-                const token = tokens.find((t) => t.address === e.target.value);
-                setTokenA(token || null);
-              }}
+            <div
               style={{
-                width: "100%",
-                padding: 10,
-                borderRadius: 6,
-                border: "1px solid #ccc",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              <option value="">选择代币A</option>
-              {tokens.map((token) => (
-                <option key={`A-${token.address}`} value={token.address}>
-                  {token.symbol}
-                </option>
-              ))}
-            </select>
-          </div>
+              <h4>
+                {tokenA.symbol}/{tokenB.symbol} 池子信息
+              </h4>
+              <button onClick={() => fetchCurrentPairInfo(tokenA, tokenB)} className="btn-neon !py-1 !px-3 !text-sm">
+                刷新
+              </button>
+            </div>
 
-          <div>
-            <label
-              style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}
-            >
-              代币B:
-            </label>
-            <select
-              value={tokenB?.address || ""}
-              onChange={(e) => {
-                const token = tokens.find((t) => t.address === e.target.value);
-                setTokenB(token || null);
-              }}
-              style={{
-                width: "100%",
-                padding: 10,
-                borderRadius: 6,
-                border: "1px solid #ccc",
-              }}
-            >
-              <option value="">选择代币B</option>
-              {tokens
-                .filter((token) => token.address !== tokenA?.address)
-                .map((token) => (
-                  <option key={`B-${token.address}`} value={token.address}>
+            {currentPairInfo.address ? (
+              <>
+                <p className="mt-3">
+                  <strong>池子地址:</strong>{" "}
+                  {`${currentPairInfo.address.substring(0, 6)}...${currentPairInfo.address.substring(currentPairInfo.address.length - 4)}`}
+                </p>
+
+                {currentPairInfo.reserves && currentPairInfo.priceAB && (
+                  <>
+                    <p className="mt-2">
+                      <strong>储备量:</strong> {tokenA?.symbol}: <span className="badge-soft">{currentPairInfo.reserves.reserveA}</span> /{" "}
+                      {tokenB?.symbol}: <span className="badge-soft">{currentPairInfo.reserves.reserveB}</span>
+                    </p>
+                    <p className="mt-1">
+                      价格比例: 1 {tokenA?.symbol} = <span className="badge-soft">{currentPairInfo.priceAB}</span> {tokenB?.symbol}
+                    </p>
+                    <p className="mt-1">
+                      反向价格: 1 {tokenB?.symbol} = <span className="badge-soft">{currentPairInfo.priceBA}</span> {tokenA?.symbol}
+                    </p>
+                  </>
+                )}
+              </>
+            ) : (
+              <p className="text-slate-600">该交易对尚未创建流动性池</p>
+            )}
+          </div>
+        )}
+
+        {/* 选择代币区域（结构保持） */}
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
+            <div>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>代币A:</label>
+              <select
+                value={tokenA?.address || ""}
+                onChange={(e) => {
+                  const token = tokens.find((t) => t.address === e.target.value);
+                  setTokenA(token || null);
+                }}
+                className="input-neon"
+              >
+                <option value="">选择代币A</option>
+                {tokens.map((token) => (
+                  <option key={`A-${token.address}`} value={token.address}>
                     {token.symbol}
                   </option>
                 ))}
-            </select>
-          </div>
-        </div>
-      </div>
+              </select>
+            </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <h4 style={{ marginBottom: 12 }}>
-          {currentPairInfo.address ? "注入流动性" : "注入初始流动性"}
-        </h4>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-            marginBottom: 12,
-          }}
-        >
-          <div>
-            <label style={{ display: "block", marginBottom: 8 }}>
-              {tokenA?.symbol || "代币A"} 数量:
-            </label>
-            <input
-              type="number"
-              placeholder="0.0"
-              disabled={!tokenA || !tokenB}
-              value={amountA}
-              onChange={(e) => {
-                setAmountA(e.target.value);
-                autoMatchRatio(e.target.value, "A");
-              }}
-              min="0"
-              step="any"
-              style={{
-                width: "100%",
-                padding: 10,
-                borderRadius: 6,
-                border: "1px solid #ccc",
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", marginBottom: 8 }}>
-              {tokenB?.symbol || "代币B"} 数量:
-            </label>
-            <input
-              type="number"
-              placeholder="0.0"
-              disabled={!tokenA || !tokenB}
-              value={amountB}
-              onChange={(e) => {
-                setAmountB(e.target.value);
-                autoMatchRatio(e.target.value, "B");
-              }}
-              min="0"
-              step="any"
-              style={{
-                width: "100%",
-                padding: 10,
-                borderRadius: 6,
-                border: "1px solid #ccc",
-              }}
-            />
-            {/* {currentPairInfo.price && (
-              <button
-                onClick={autoFillAmountB}
-                style={{ padding: "4px 8px", fontSize: "12px" }}
-                title="按照当前价格自动填充"
+            <div>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>代币B:</label>
+              <select
+                value={tokenB?.address || ""}
+                onChange={(e) => {
+                  const token = tokens.find((t) => t.address === e.target.value);
+                  setTokenB(token || null);
+                }}
+                className="input-neon"
               >
-                自动匹配
-              </button>
-            )} */}
+                <option value="">选择代币B</option>
+                {tokens
+                  .filter((token) => token.address !== tokenA?.address)
+                  .map((token) => (
+                    <option key={`B-${token.address}`} value={token.address}>
+                      {token.symbol}
+                    </option>
+                  ))}
+              </select>
+            </div>
           </div>
         </div>
-        {address && isConnected ? (
-          <button
-            onClick={handleAddLiquidity}
-            disabled={
-              isAdding ||
-              !tokenA ||
-              !tokenB ||
-              !isValidNumber(amountA) ||
-              !isValidNumber(amountB) ||
-              !validateLiquidityRatio(
-                amountA,
-                amountB,
-                tokenA,
-                tokenB,
-                currentPairInfo.priceAB
-              ).isValid
-            }
+
+        {/* 注入流动性（结构保持，控件样式替换） */}
+        <div style={{ marginBottom: 20 }}>
+          <h4 style={{ marginBottom: 12 }}>{currentPairInfo.address ? "注入流动性" : "注入初始流动性"}</h4>
+
+          <div
             style={{
-              width: "100%",
-              padding: 12,
-              backgroundColor:
-                isAdding ||
-                !validateLiquidityRatio(
-                  amountA,
-                  amountB,
-                  tokenA,
-                  tokenB,
-                  currentPairInfo.priceAB
-                ).isValid
-                  ? "#ccc"
-                  : "#4CAF50",
-              color: "white",
-              border: "none",
-              borderRadius: 6,
-              cursor: isAdding ? "not-allowed" : "pointer",
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+              marginBottom: 12,
             }}
           >
-            {isAdding ? "创建中..." : "创建流动性池"}
-          </button>
-        ) : (
-          <button
-            style={{ width: "100%", marginTop: 8 }}
-            onClick={openConnectModal}
-          >
-            连接钱包
-          </button>
+            <div>
+              <label style={{ display: "block", marginBottom: 8 }}>{tokenA?.symbol || "代币A"} 数量:</label>
+              <input
+                type="number"
+                placeholder="0.0"
+                disabled={!tokenA || !tokenB}
+                value={amountA}
+                onChange={(e) => {
+                  setAmountA(e.target.value);
+                  autoMatchRatio(e.target.value, "A");
+                }}
+                min="0"
+                step="any"
+                className="input-neon"
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: 8 }}>{tokenB?.symbol || "代币B"} 数量:</label>
+              <input
+                type="number"
+                placeholder="0.0"
+                disabled={!tokenA || !tokenB}
+                value={amountB}
+                onChange={(e) => {
+                  setAmountB(e.target.value);
+                  autoMatchRatio(e.target.value, "B");
+                }}
+                min="0"
+                step="any"
+                className="input-neon"
+              />
+            </div>
+          </div>
+
+          {address && isConnected ? (
+            <button
+              onClick={handleAddLiquidity}
+              disabled={
+                isAdding ||
+                !tokenA ||
+                !tokenB ||
+                !isValidNumber(amountA) ||
+                !isValidNumber(amountB) ||
+                !validateLiquidityRatio(amountA, amountB, tokenA, tokenB, currentPairInfo.priceAB).isValid
+              }
+              className="btn-neon w-full"
+            >
+              {isAdding ? "创建中..." : "创建流动性池"}
+            </button>
+          ) : (
+            <button className="btn-neon w-full mt-2" onClick={openConnectModal}>
+              连接钱包
+            </button>
+          )}
+        </div>
+
+        {/* 移除流动性（结构保持，关键按钮样式替换） */}
+        {tokenA && tokenB && currentPairInfo.address && (
+          <div style={{ marginTop: 30 }}>
+            <h3>移除流动性</h3>
+            <p>
+              你当前 LP 余额: <span className="badge-soft">{lpAmount}</span>
+            </p>
+
+            <div style={{ marginBottom: 10 }}>
+              <label>输入百分比：</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={removePercent}
+                onChange={(e) => handlePercentClick(Number(e.target.value))}
+                className="input-neon !w-[120px] inline-block mr-2"
+              />
+              %<label className="ml-3">待移除LP数量：{lpToRemove}</label>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", marginBottom: 10 }}>
+              {[25, 50, 75, 100].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => handlePercentClick(p)}
+                  className={`px-3 py-2 rounded-lg border ${
+                    removePercent === p ? "btn-neon !px-4 !py-2" : "border-slate-300 text-slate-700 hover:bg-slate-100 transition"
+                  }`}
+                >
+                  {p}%
+                </button>
+              ))}
+            </div>
+
+            <button onClick={handleRemoveLiquidity} disabled={isRemoving || removePercent <= 0} className="btn-neon">
+              {isRemoving ? "移除中..." : "确认移除"}
+            </button>
+          </div>
         )}
       </div>
-
-      {tokenA && tokenB && currentPairInfo.address && (
-        <div style={{ marginTop: 30 }}>
-          <h3>移除流动性</h3>
-          <p>你当前 LP 余额: {lpAmount}</p>
-
-          <div style={{ marginBottom: 10 }}>
-            <label>输入百分比：</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={removePercent}
-              onChange={(e) => handlePercentClick(Number(e.target.value))}
-              style={{ width: "80px", marginRight: "10px" }}
-            />
-            %<label>待移除LP数量：{lpToRemove}</label>
-          </div>
-
-          <div style={{ display: "flex", gap: "10px", marginBottom: 10 }}>
-            {[25, 50, 75, 100].map((p) => (
-              <button
-                key={p}
-                onClick={() => handlePercentClick(p)}
-                style={{
-                  padding: "6px 12px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  backgroundColor: removePercent === p ? "#007bff" : "#f9f9f9",
-                  color: removePercent === p ? "#fff" : "#000",
-                }}
-              >
-                {p}%
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={handleRemoveLiquidity}
-            disabled={isRemoving || removePercent <= 0}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#dc3545",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-            }}
-          >
-            {isRemoving ? "移除中..." : "确认移除"}
-          </button>
-        </div>
-      )}
     </div>
   );
 };

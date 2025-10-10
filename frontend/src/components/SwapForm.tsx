@@ -33,33 +33,23 @@ const SwapForm: React.FC = () => {
   const [error, setError] = useState("");
   const [pairExists, setPairExists] = useState(true);
   const publicClient = usePublicClient();
-  // 初始化 provider
+
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).ethereum) {
       setProvider(new ethers.BrowserProvider((window as any).ethereum));
     }
   }, []);
 
-  // 获取 pair、储备量并计算预估
   useEffect(() => {
     if (!provider || !tokenIn || !tokenOut || !amountIn) {
       setAmountOut("");
       setFee("");
       return;
     }
-    console.log(tokenIn, tokenOut, amountIn, "tokenIn, tokenOut, amountIn");
     const updateEstimation = async () => {
       try {
-        const factoryContract = new ethers.Contract(
-          contract_address.UNISWAP_V2_FACTORY,
-          UniswapV2FactoryAbi,
-          provider
-        );
-        const pairAddress = await factoryContract.getPair(
-          tokenIn?.address || "",
-          tokenOut?.address || ""
-        );
-        console.log(pairAddress, "pairAddress");
+        const factoryContract = new ethers.Contract(contract_address.UNISWAP_V2_FACTORY, UniswapV2FactoryAbi, provider);
+        const pairAddress = await factoryContract.getPair(tokenIn?.address || "", tokenOut?.address || "");
         if (!pairAddress || pairAddress === ethers.ZeroAddress) {
           setAmountOut("");
           setFee("");
@@ -68,28 +58,25 @@ const SwapForm: React.FC = () => {
           return;
         }
         setPairExists(true);
-        setError(""); // pair 存在，清除错误提示
-        const pairContract = new ethers.Contract(
-          pairAddress,
-          UniswapV2PairAbi,
-          provider
-        );
+        setError("");
 
-        const [reserves, token0Address] = await Promise.all([
-          pairContract.getReserves(),
-          pairContract.token0(),
-        ]);
-        //判断输入的是哪个代币
+        const pairContract = new ethers.Contract(pairAddress, UniswapV2PairAbi, provider);
+        const [reserves, token0Address] = await Promise.all([pairContract.getReserves(), pairContract.token0()]);
         const isTokenInToken0 = tokenIn.address === token0Address;
         const reserveIn = isTokenInToken0 ? reserves[0] : reserves[1];
         const reserveOut = isTokenInToken0 ? reserves[1] : reserves[0];
 
         const amountInParsed = parseUnits(amountIn, tokenIn.decimals);
-        const { amountOut, feeAmount } = getAmountOutWithFee(
-          amountInParsed,
-          reserveIn,
-          reserveOut
-        );
+        const { amountOut, feeAmount } = getAmountOutWithFee(amountInParsed, reserveIn, reserveOut);
+        console.log("amountOut:", amountOut, "reserveOut:", reserveOut, amountOut > reserveOut);
+        // 最大输入量限制（可按策略）
+        const maxInput = (reserveIn * BigInt(90)) / BigInt(100); // 例如 90% 的池子储量
+        if (amountInParsed > maxInput) {
+          setAmountOut("");
+          setFee("");
+          setError(`输入数量过大，建议最大输入 ${formatUnits(maxInput, tokenIn.decimals)} ${tokenIn.symbol}`);
+          return;
+        }
 
         setAmountOut(formatUnits(amountOut, tokenOut.decimals));
         setFee(formatUnits(feeAmount, tokenIn.decimals));
@@ -97,6 +84,7 @@ const SwapForm: React.FC = () => {
         console.error("计算预估失败", err);
         setAmountOut("");
         setFee("");
+        setError("计算预估失败，请重试");
       }
     };
 
@@ -116,71 +104,43 @@ const SwapForm: React.FC = () => {
       setError("路由地址未配置");
       return false;
     }
-    console.log(tokenIn, address, "address");
-    const tokenContract = new ethers.Contract(
-      tokenIn?.address || "",
-      ERC20Abi,
-      provider
-    );
-    const allowance = await tokenContract.allowance(
-      address,
-      contract_address.UNISWAP_V2_ROUTER_02
-    );
-    console.log(allowance, "allowance");
+    const tokenContract = new ethers.Contract(tokenIn?.address || "", ERC20Abi, provider);
+    const allowance = await tokenContract.allowance(address, contract_address.UNISWAP_V2_ROUTER_02);
     if (allowance < parseUnits(amountIn, tokenIn?.decimals)) {
       setError("请先授权");
       return false;
     }
     return true;
   };
+
   const handleApprove = async () => {
-    console.log("handleApprove");
     const signer = await provider!.getSigner();
-    console.log(signer, "signer");
-    const tokenContract = new ethers.Contract(
-      tokenIn?.address || "",
-      ERC20Abi,
-      signer
-    );
-    const approvalTx = await tokenContract.approve(
-      contract_address.UNISWAP_V2_ROUTER_02,
-      parseUnits(amountIn, tokenIn?.decimals)
-    );
+    const tokenContract = new ethers.Contract(tokenIn?.address || "", ERC20Abi, signer);
+    const approvalTx = await tokenContract.approve(contract_address.UNISWAP_V2_ROUTER_02, parseUnits(amountIn, tokenIn?.decimals));
     await approvalTx.wait();
-    console.log("ERC20 授权交易已发送，等待确认...", approvalTx);
-    if (!publicClient) {
-      console.error("publicClient 未定义，无法等待交易回执");
-      return;
-    }
-    const approveReceipt = await waitForTransactionReceipt(publicClient, {
-      hash: approvalTx.hash,
-    });
+    if (!publicClient) return;
+    const approveReceipt = await waitForTransactionReceipt(publicClient, { hash: approvalTx.hash });
     if (approveReceipt?.status !== "success") {
-      console.error("LP 授权失败");
       setError("LP 授权失败");
       return;
     }
-    console.log("LP 授权成功");
   };
-  // 点击 Swap
+
   const handleSwap = async () => {
     if (!tokenIn || !tokenOut || !amountIn || !provider) {
       setError("请选择代币并输入数量");
       return;
     }
+    if (!amountOut) {
+      setError("输入数量过大");
+      return;
+    }
     setLoading(true);
     try {
       const isApproved = await checkAllowance();
-      if (!isApproved) {
-        await handleApprove();
-      }
-      //开始swap
+      if (!isApproved) await handleApprove();
       const signer = await provider.getSigner();
-      const routerContract = new ethers.Contract(
-        contract_address.UNISWAP_V2_ROUTER_02,
-        UniswapV2Router02Abi,
-        signer
-      );
+      const routerContract = new ethers.Contract(contract_address.UNISWAP_V2_ROUTER_02, UniswapV2Router02Abi, signer);
       const tx = await routerContract.swapExactTokensForTokens(
         parseUnits(amountIn, tokenIn.decimals),
         0,
@@ -189,27 +149,15 @@ const SwapForm: React.FC = () => {
         Date.now() + 1000 * 60 * 10
       );
       await tx.wait();
-      console.log("兑换交易已发送，等待确认...", tx);
-      if (!publicClient) {
-        console.error("publicClient 未定义，无法等待交易回执");
-        return;
-      }
-      const receipt = await waitForTransactionReceipt(publicClient, {
-        hash: tx.hash,
-      });
+      if (!publicClient) return;
+      const receipt = await waitForTransactionReceipt(publicClient, { hash: tx.hash });
       if (receipt?.status !== "success") {
-        console.error("兑换交易失败");
         setError("兑换交易失败");
         return;
       }
-      console.log("兑换交易成功");
-
-      // ⚠️ TODO: 替换为实际合约调用
-      console.log(`Swap ${amountIn} ${tokenIn.symbol} -> ${tokenOut.symbol}`);
       setError("");
       alert("兑换成功！");
     } catch (err) {
-      console.error(err);
       setError("兑换失败，请重试");
     } finally {
       setLoading(false);
@@ -217,62 +165,42 @@ const SwapForm: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        border: "1px solid #eee",
-        borderRadius: 12,
-        padding: 16,
-        maxWidth: 400,
-        margin: "0 auto",
-      }}
-    >
-      <h3 style={{ marginBottom: 16 }}>兑换</h3>
+    <div className="glass-card p-6 max-w-xl mx-auto space-y-4">
+      <h3 className="text-xl font-bold text-center">兑换</h3>
 
       {/* 支付代币 */}
-      <TokenSelector
-        label="支付代币"
-        tokens={tokens}
-        selectedToken={tokenIn}
-        onSelect={setTokenIn}
-      />
+      <TokenSelector label="支付代币" tokens={tokens} selectedToken={tokenIn} onSelect={setTokenIn} />
       <input
         type="number"
         placeholder="输入数量"
         value={amountIn}
         onChange={(e) => setAmountIn(e.target.value)}
-        style={{ width: "100%", marginTop: 8, marginBottom: 16, padding: 8 }}
+        className="input-neon mt-2 mb-4"
       />
 
       {/* 获得代币 */}
-      <TokenSelector
-        label="获得代币"
-        tokens={tokens}
-        selectedToken={tokenOut}
-        onSelect={setTokenOut}
-      />
-      <input
-        type="number"
-        placeholder="预估获得数量"
-        value={amountOut}
-        style={{ width: "100%", marginTop: 8, marginBottom: 8, padding: 8 }}
-        disabled
-      />
+      <TokenSelector label="获得代币" tokens={tokens} selectedToken={tokenOut} onSelect={setTokenOut} />
+      <input type="number" placeholder="预估获得数量" value={amountOut} disabled className="input-neon mt-2 mb-2 opacity-80" />
 
       {/* 手续费显示 */}
       {fee && tokenIn && (
-        <p style={{ fontSize: 14, color: "#666", marginBottom: 16 }}>
-          手续费: {fee} {tokenIn.symbol}
+        <p className="text-sm text-slate-400 mb-2">
+          手续费:{" "}
+          <span className="badge-soft">
+            {fee} {tokenIn.symbol}
+          </span>
         </p>
       )}
-      {error && <p style={{ color: "red" }}>{error}</p>}
 
+      {/* 错误提示 */}
+      {error && <p className="text-red-400 font-medium">{error}</p>}
+
+      {/* Swap 按钮 */}
       {isConnected && address && (
         <button
-          style={{ marginTop: 16, width: "100%", padding: 12, borderRadius: 8 }}
           onClick={handleSwap}
-          disabled={
-            !pairExists || loading || !tokenIn || !tokenOut || !amountIn
-          }
+          disabled={!pairExists || loading || !tokenIn || !tokenOut || !amountIn}
+          className="btn-neon w-full mt-2"
         >
           {loading ? "兑换中..." : "Swap"}
         </button>
