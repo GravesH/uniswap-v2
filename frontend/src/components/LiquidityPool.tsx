@@ -16,7 +16,9 @@ import UniswapV2PairAbi from "../abi/UniswapV2Pair.json";
 import { contract_address } from "../constants/index";
 import { ethers } from "ethers";
 import { waitForTransactionReceipt } from "viem/actions";
-import { useTokenStore } from "../store/tokenStore";
+import { useTokenStore } from "@/store/tokenStore";
+import { useTxStore } from "../store/txStore";
+
 const SEPOLIA_NODE_URL = `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`;
 
 interface Token {
@@ -44,6 +46,31 @@ const LiquidityPool: React.FC = () => {
   const { writeContractAsync, data: writeData, isPending } = useWriteContract();
   const reloadFromFactory = useTokenStore((s) => s.reloadFromFactory);
   const tokens = useTokenStore((s) => s.tokens);
+  const { updateTransaction, clearTransactions, addTransaction, transactions } = useTxStore();
+
+  // 找到当前账户、当前链下、当前页面的交易
+  const currentTx = transactions.find((t) => t.account === address && t.chainId === publicClient?.chain.id && t.type === "addLiquidity");
+  console.log("currentTx:", currentTx);
+  useEffect(() => {
+    if (currentTx) {
+      if (currentTx.status === "pending") {
+        // 自动重新订阅交易状态
+        watchTxStatus(currentTx.hash);
+      }
+    }
+  }, [currentTx]);
+
+  const watchTxStatus = async (hash: string) => {
+    if (!publicClient) return;
+    const receipt = await waitForTransactionReceipt(publicClient, { hash: hash as `0x${string}` });
+    console.log("receipt:", receipt);
+    if (receipt.status === "success") {
+      updateTransaction(hash, "success");
+    } else if (receipt.status === "reverted") {
+      updateTransaction(hash, "reverted");
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).ethereum) {
       setProvider(new ethers.BrowserProvider((window as any).ethereum));
@@ -318,19 +345,20 @@ const LiquidityPool: React.FC = () => {
     }
   }, [tokenA, tokenB, provider]);
   const handleAddLiquidity = async () => {
-    if (!tokenA || !tokenB || !isValidNumber(amountA) || !isValidNumber(amountB)) {
-      alert("请选择两种代币并输入有效数量");
+    if (!publicClient || !address) {
+      alert("请先连接钱包！");
       return;
     }
-
-    if (isDisconnected) {
-      alert("请先连接钱包！");
+    if (!tokenA || !tokenB || !isValidNumber(amountA) || !isValidNumber(amountB)) {
+      alert("请选择两种代币并输入有效数量");
       return;
     }
 
     await checkoutAllowance();
     await handleApprove();
     setIsAdding(true);
+
+    let tx: `0x${string}` | undefined;
 
     try {
       const amountADesired = ethers.parseUnits(amountA, tokenA.decimals);
@@ -339,7 +367,7 @@ const LiquidityPool: React.FC = () => {
       const amountBMin = (amountBDesired * BigInt(99)) / BigInt(100);
 
       setTimeout(async () => {
-        const tx = await writeContractAsync({
+        tx = await writeContractAsync({
           address: contract_address.UNISWAP_V2_ROUTER_02 as `0x${string}`,
           abi: UniswapV2Router02Abi,
           functionName: "addLiquidity",
@@ -354,7 +382,14 @@ const LiquidityPool: React.FC = () => {
             Math.floor(Date.now() / 1000) + 60 * 20,
           ],
         });
-
+        //记录交易
+        addTransaction({
+          hash: tx,
+          status: "pending",
+          type: "addLiquidity",
+          chainId: publicClient?.chain.id,
+          account: address,
+        });
         console.log("添加流动性交易已发送，等待确认...", tx);
         if (!publicClient) {
           console.error("publicClient 未定义，无法等待交易回执");
@@ -364,13 +399,14 @@ const LiquidityPool: React.FC = () => {
           hash: tx,
         });
         if (receipt.status === "success") {
+          updateTransaction(tx, "success");
           console.log("交易已确认:", receipt);
           console.log("流动性池创建成功");
-          setCreateSuccess(true);
         }
       }, 1000); // 模拟网络延迟
     } catch (error) {
       console.error("创建流动性池失败:", error);
+      updateTransaction(tx || "", "reverted");
       if ((error as any)?.details) {
         console.error("错误详情:", (error as any)?.details);
       }
